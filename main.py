@@ -2,6 +2,10 @@ import asyncio
 import sys
 import gi
 import pytesseract
+from pydantic import BaseModel
+import base64
+import json
+from PIL import Image
 
 gi.require_version("Xdp", "1.0")
 gi.require_version("Gio", "2.0")
@@ -10,6 +14,18 @@ gi.require_version("Adw", "1")
 
 from gi.events import GLibEventLoopPolicy  # noqa: E402
 from gi.repository import Xdp, Gio, Gtk, Adw, GdkPixbuf, Gdk  # noqa: E402
+
+
+class TextBox(BaseModel):
+    x1: int
+    y1: int
+    x2: int
+    y2: int
+    text: str
+
+
+class TextDetectionResult(BaseModel):
+    text_boxes: list[TextBox]
 
 
 async def take_screenshot():
@@ -51,6 +67,71 @@ def get_bounding_boxes(image_uri):
         return []
 
 
+def get_bounding_boxes_llama(image_uri):
+    """Use llama.cpp-supported model to get bounding boxes of detected text in the image."""
+    from llama_cpp import Llama  # noqa: E402
+    from llama_cpp.llama_chat_format import Qwen35ChatHandler  # noqa: E402
+
+    chat_handler = Qwen35ChatHandler.from_pretrained(
+        repo_id="unsloth/Qwen3.5-9B-GGUF",
+        filename="mmproj-F16.gguf",
+        image_min_tokens=1024,
+        enable_thinking=False,
+    )
+    llm = Llama.from_pretrained(
+        repo_id="unsloth/Qwen3.5-9B-GGUF",
+        filename="Qwen3.5-9B-Q4_K_M.gguf",
+        chat_handler=chat_handler,
+        n_ctx=4096,
+        n_gpu_layers=-1,
+    )
+    with open(Gio.File.new_for_uri(image_uri).get_path(), "rb") as f:
+        image_data = f.read()
+        image_base64 = base64.b64encode(image_data).decode("utf-8")
+
+    response = llm.create_chat_completion(
+        messages=[
+            {
+                "role": "system",
+                "content": """
+                    You are an expert in text detection in images. You can analyze
+                    the image and return the bounding boxes of detected text in the
+                    specified format. Detect text in the image and return their 
+                    bounding boxes in the format of {x1, y1, x2, y2, text},
+                    where (x1, y1) is the top-left corner and (x2, y2) is the
+                    bottom-right corner of the bounding box, and text is the
+                    detected text within the bounding box.
+                """,
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/png;base64,{image_base64}"},
+                    }
+                ],
+            },
+        ],
+        response_format={
+            "type": "json_object",
+            "schema": TextDetectionResult.model_json_schema(),
+        },
+    )
+
+    bboxes = json.loads(response["choices"][0]["message"]["content"])["text_boxes"]
+
+    # Qwen uses 1000-based coordinates, convert them to pixel-based coordinates
+    image = Image.open(Gio.File.new_for_uri(image_uri).get_path())
+    for bbox in bboxes:
+        bbox["x1"] = int(bbox["x1"] * image.width / 1000)
+        bbox["y1"] = int(bbox["y1"] * image.height / 1000)
+        bbox["x2"] = int(bbox["x2"] * image.width / 1000)
+        bbox["y2"] = int(bbox["y2"] * image.height / 1000)
+
+    return bboxes
+
+
 def is_inside_box(x, y, x1, y1, x2, y2):
     """Check if the point (x, y) is inside the box defined by (x1, y1, x2, y2)."""
     return x1 <= x <= x2 and y1 <= y <= y2
@@ -76,7 +157,7 @@ def make_drawing_area(image_uri: str) -> Gtk.DrawingArea:
 
     # Border boxes that highlight texts detected in the image
     # [{x1, y1, x2, y2, text}, ...]
-    bboxes = get_bounding_boxes(image_uri)
+    bboxes = get_bounding_boxes_llama(image_uri)
     bboxes_active = [False for bbox in bboxes]  # Track active state of each box
 
     def on_draw(area, context, width, height, user_data):
