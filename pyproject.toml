@@ -7,6 +7,8 @@ requires-python = ">=3.13"
 dependencies = [
     "huggingface-hub>=1.9.0",
     "llama-cpp-python>=0.3.20",
+    "paddleocr>=3.4.0",
+    "paddlepaddle==3.2.0",
     "pydantic>=2.12.5",
     "pygobject>=3.56.2",
     "pytesseract>=0.3.13",

@@ -132,6 +132,36 @@ def get_bounding_boxes_llama(image_uri):
     return bboxes
 
 
+def get_bounding_boxes_paddleocr(image_uri):
+    """Use PaddleOCR to get bounding boxes of detected text in the image."""
+    from paddleocr import PaddleOCR  # noqa: E402
+
+    ocr = PaddleOCR(
+        use_doc_unwarping=False,  # Disable doc unwarping to get bounding boxes in the original image coordinates
+        use_doc_orientation_classify=False,  # Disable orientation classification (screenshots are usually correctly oriented)
+        use_textline_orientation=False,  # Disable textline orientation (we only care about bounding boxes, not orientation)
+    )
+    path = Gio.File.new_for_uri(image_uri).get_path()
+    result = ocr.predict(path)[0]
+
+    length = len(result["rec_texts"])
+
+    bboxes = []
+    for i in range(length):
+        # rec_boxes is a length-by-4 ndarray, each row is a tuple of (x1,y1,x2,y2)
+        bboxes.append(
+            {
+                "x1": int(result["rec_boxes"][i, 0]),
+                "y1": int(result["rec_boxes"][i, 1]),
+                "x2": int(result["rec_boxes"][i, 2]),
+                "y2": int(result["rec_boxes"][i, 3]),
+                "text": result["rec_texts"][i],
+            }
+        )
+
+    return bboxes
+
+
 def is_inside_box(x, y, x1, y1, x2, y2):
     """Check if the point (x, y) is inside the box defined by (x1, y1, x2, y2)."""
     return x1 <= x <= x2 and y1 <= y <= y2
@@ -157,7 +187,7 @@ def make_drawing_area(image_uri: str) -> Gtk.DrawingArea:
 
     # Border boxes that highlight texts detected in the image
     # [{x1, y1, x2, y2, text}, ...]
-    bboxes = get_bounding_boxes_llama(image_uri)
+    bboxes = get_bounding_boxes_paddleocr(image_uri)
     bboxes_active = [False for bbox in bboxes]  # Track active state of each box
 
     def on_draw(area, context, width, height, user_data):
