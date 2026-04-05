@@ -6,6 +6,7 @@ from pydantic import BaseModel
 import base64
 import json
 from PIL import Image
+import subprocess
 
 gi.require_version("Xdp", "1.0")
 gi.require_version("Gio", "2.0")
@@ -26,6 +27,16 @@ class TextBox(BaseModel):
 
 class TextDetectionResult(BaseModel):
     text_boxes: list[TextBox]
+
+
+def wl_copy(text):
+    """Copy text to clipboard using wl-copy command."""
+    try:
+        process = subprocess.run(["wl-copy"], input=text.encode("utf-8"), check=True)
+    except subprocess.CalledProcessError as e:
+        print("Failed to copy text to clipboard.")
+    except Exception as e:
+        print("Error copying text to clipboard:", e)
 
 
 async def take_screenshot():
@@ -312,6 +323,10 @@ class ScreenshotView(Gtk.Widget):
             ):
                 if self.text_onclick:
                     self.text_onclick(bbox["text"])
+
+                # Copy the detected text to clipboard using wl-copy
+                wl_copy(bbox["text"])
+
                 break
 
 
