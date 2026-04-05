@@ -228,7 +228,7 @@ class ScreenshotView(Gtk.Widget):
             59 / 255,
             130 / 255,
             246 / 255,
-            0.2,
+            0.4,
         )  # RGBA (scaled to 0-1)
         self.bboxes = get_bounding_boxes_paddleocr(self.screenshot.get_uri())
 
@@ -236,6 +236,10 @@ class ScreenshotView(Gtk.Widget):
         self.gesture_click = Gtk.GestureClick()
         self.gesture_click.connect("pressed", self.on_click)
         self.add_controller(self.gesture_click)
+
+        # Set up transition for bounding box alpha
+        self._t0 = None
+        self.add_tick_callback(self.on_tick)
 
     def do_snapshot(self, s: Gtk.Snapshot):
         self.width = self.get_width()
@@ -256,6 +260,28 @@ class ScreenshotView(Gtk.Widget):
                 x1 * self.x_s, y1 * self.y_s, (x2 - x1) * self.x_s, (y2 - y1) * self.y_s
             )
             cr_bbox_layer.fill()
+
+    def on_tick(self, widget, frame_clock):
+        t = frame_clock.get_frame_time() / 1_000_000.0  # microseconds -> seconds
+        if self._t0 is None:
+            self._t0 = t  # init t0 on the first tick
+
+        # Fade-in effect for bounding boxes
+        elapsed = t - self._t0
+        fade_in_duration = 0.75  # seconds
+        alpha_end = 0.35  # final alpha value for bounding boxes
+
+        if elapsed < fade_in_duration:
+            alpha = elapsed / fade_in_duration * alpha_end
+            self.bboxes_color = (
+                *self.bboxes_color[0:3],
+                alpha,
+            )
+        else:
+            return False  # stop animating after fade-in is complete
+
+        self.queue_draw()
+        return True  # keep animating
 
     def on_click(self, gesture, n_press, x, y):
         # Check if the click is inside any of the bounding boxes and print the detected text
