@@ -182,41 +182,54 @@ def get_unique_active_box(bboxes_active, bboxes):
 
 def make_drawing_area(image_uri: str) -> Gtk.DrawingArea:
     drawing_area = Gtk.DrawingArea()
-    drawing_area.set_content_width(800)
-    drawing_area.set_content_height(600)
+    area_w = 960
+    area_h = 720
+    drawing_area.set_content_width(area_w)
+    drawing_area.set_content_height(area_h)
+
+    image_file = Gio.File.new_for_uri(image_uri)
+    stream = image_file.read(None)
+
+    pixbuf = GdkPixbuf.Pixbuf.new_from_stream(stream, None)
+
+    # Scale down to fit drawing area while preserving aspect ratio
+    img_w = pixbuf.get_width()
+    img_h = pixbuf.get_height()
+    s = min(area_w / img_w, area_h / img_h, 1.0)  # only scale down
 
     # Border boxes that highlight texts detected in the image
     # [{x1, y1, x2, y2, text}, ...]
     bboxes = get_bounding_boxes_paddleocr(image_uri)
     bboxes_active = [False for bbox in bboxes]  # Track active state of each box
 
-    def on_draw(area, context, width, height, user_data):
+    def on_draw(area, context, area_w, area_h, user_data):
         # Draw the image onto the drawing area
-        image_file = Gio.File.new_for_uri(image_uri)
-        stream = image_file.read(None)
-
-        pixbuf = GdkPixbuf.Pixbuf.new_from_stream(stream, None)
-        Gdk.cairo_set_source_pixbuf(context, pixbuf, 0, 0)
+        if s < 1.0:
+            pixbuf_scaled = pixbuf.scale_simple(
+                s * img_w, s * img_h, GdkPixbuf.InterpType.BILINEAR
+            )
+        Gdk.cairo_set_source_pixbuf(context, pixbuf_scaled, 0, 0)
         context.paint()
 
         # Draw bounding boxes around detected text
         for i, bbox in enumerate(bboxes):
             x1, y1, x2, y2 = bbox["x1"], bbox["y1"], bbox["x2"], bbox["y2"]
             context.set_source_rgba(1, 0, 0, 0.8)  # Red color
-            context.rectangle(x1, y1, x2 - x1, y2 - y1)
+            context.rectangle(s * x1, s * y1, s * (x2 - x1), s * (y2 - y1))
             context.stroke()
 
             # If the box is active, fill it with a semi-transparent color
             if bboxes_active[i]:
                 context.set_source_rgba(1, 0, 0, 0.3)
-                context.rectangle(x1, y1, x2 - x1, y2 - y1)
+                context.rectangle(s * x1, s * y1, s * (x2 - x1), s * (y2 - y1))
                 context.fill()
 
     def on_click(gesture, n_press, x, y):
         # Check if the click is inside any of the bounding boxes and update their active state
+        # (x, y) are in scaled coordinates, dividing by s to get original image coordinates
         for i, bbox in enumerate(bboxes):
             bboxes_active[i] = is_inside_box(
-                x, y, bbox["x1"], bbox["y1"], bbox["x2"], bbox["y2"]
+                x / s, y / s, bbox["x1"], bbox["y1"], bbox["x2"], bbox["y2"]
             )
 
         # Update the status label with the detected text if the box is active
