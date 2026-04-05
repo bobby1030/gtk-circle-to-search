@@ -255,23 +255,34 @@ def make_drawing_area(image_uri: str) -> Gtk.DrawingArea:
     return container
 
 
-def show_app(image_uri: str) -> None:
-    app = Adw.Application(application_id="com.github.py_screenshot.viewer")
+class App(Adw.Application):
+    def __init__(self):
+        super().__init__(application_id="me.bobbyho.GtkCircleToSearch")
+        self.connect("activate", self.on_activate)
+        self.connect("shutdown", lambda _: self.quit())
 
-    def on_activate(app: Adw.Application) -> None:
-        window = Adw.ApplicationWindow(application=app, title="Image Viewer")
-        window.set_default_size(960, 720)
+    def on_activate(self, app):
+        window = MainWindow(self)
+        window.present()
 
-        drawing_area = make_drawing_area(image_uri)
+
+class MainWindow(Adw.ApplicationWindow):
+    def __init__(self, app):
+        super().__init__(application=app, title="Circle to Search")
+        self.set_default_size(960, 720)
+
+        drawing_area = make_drawing_area(
+            "file:///home/bobbyho/Projects/gtk-circle-to-search/test-screenshots/spotify.png"
+        )
 
         container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         container.append(drawing_area)
 
-        window.set_content(container)
-        window.present()
+        self.set_content(container)
 
-    app.connect("activate", on_activate)
-    app.connect("shutdown", lambda _: app.quit())
+
+def show_app() -> None:
+    app = App()
     app.run(sys.argv)
 
 
@@ -280,7 +291,7 @@ async def main():
     print("Screenshot taken:", screenshot_uri)
 
     # Display the screenshot in a GTK window
-    show_app(screenshot_uri)
+    show_app()
 
     # Clean up the screenshot file if needed
     if screenshot_uri:
