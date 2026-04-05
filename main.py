@@ -132,7 +132,7 @@ def get_bounding_boxes_llama(image_uri):
     return bboxes
 
 
-def get_bounding_boxes_paddleocr(image_uri):
+def get_bounding_boxes_paddleocr(image_uri, score_threshold=0.8):
     """Use PaddleOCR to get bounding boxes of detected text in the image."""
     from paddleocr import PaddleOCR  # noqa: E402
 
@@ -148,16 +148,17 @@ def get_bounding_boxes_paddleocr(image_uri):
 
     bboxes = []
     for i in range(length):
-        # rec_boxes is a length-by-4 ndarray, each row is a tuple of (x1,y1,x2,y2)
-        bboxes.append(
-            {
-                "x1": int(result["rec_boxes"][i, 0]),
-                "y1": int(result["rec_boxes"][i, 1]),
-                "x2": int(result["rec_boxes"][i, 2]),
-                "y2": int(result["rec_boxes"][i, 3]),
-                "text": result["rec_texts"][i],
-            }
-        )
+        if result["rec_scores"][i] > score_threshold:
+            # rec_boxes is a length-by-4 ndarray, each row is a tuple of (x1,y1,x2,y2)
+            bboxes.append(
+                {
+                    "x1": int(result["rec_boxes"][i, 0]),
+                    "y1": int(result["rec_boxes"][i, 1]),
+                    "x2": int(result["rec_boxes"][i, 2]),
+                    "y2": int(result["rec_boxes"][i, 3]),
+                    "text": result["rec_texts"][i],
+                }
+            )
 
     return bboxes
 
