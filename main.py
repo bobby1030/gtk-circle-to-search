@@ -201,6 +201,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         drawing_area = ScreenshotView(
             screenshot_uri=app.screenshot_uri,
+            text_onclick=lambda text: text_buffer.set_text(text),
             width_request=960,
             height_request=720,
             margin_top=12,
@@ -209,16 +210,29 @@ class MainWindow(Adw.ApplicationWindow):
             margin_end=12,
         )
 
+        text_buffer = Gtk.TextBuffer(
+            text="Click on the detected text in the image to see it here."
+        )
+        detected_text = Gtk.TextView(
+            buffer=text_buffer,
+            margin_top=12,
+            margin_bottom=12,
+            margin_start=12,
+            margin_end=12,
+        )
+
         container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         container.append(drawing_area)
+        container.append(detected_text)
 
         self.set_content(container)
 
 
 class ScreenshotView(Gtk.Widget):
-    def __init__(self, screenshot_uri, **kwargs):
+    def __init__(self, screenshot_uri, text_onclick=None, **kwargs):
         super().__init__(**kwargs)
 
+        self.text_onclick = text_onclick  # Callback function to call when text is clicked, with the detected text as argument
         self.screenshot = Gio.File.new_for_uri(screenshot_uri)
         self.screenshot_texture = Gdk.Texture.new_from_file(self.screenshot)
 
@@ -296,7 +310,8 @@ class ScreenshotView(Gtk.Widget):
                 bbox["x2"],
                 bbox["y2"],
             ):
-                print("Clicked on text:", bbox["text"])
+                if self.text_onclick:
+                    self.text_onclick(bbox["text"])
                 break
 
 
