@@ -13,7 +13,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
 from gi.events import GLibEventLoopPolicy  # noqa: E402
-from gi.repository import Xdp, Gio, Gtk, Adw, GdkPixbuf, Gdk  # noqa: E402
+from gi.repository import Xdp, Gio, Gtk, Adw, Gdk, Graphene  # noqa: E402
 
 
 class TextBox(BaseModel):
@@ -180,81 +180,6 @@ def get_unique_active_box(bboxes_active, bboxes):
     return None
 
 
-def make_drawing_area(image_uri: str) -> Gtk.DrawingArea:
-    drawing_area = Gtk.DrawingArea()
-    area_w = 960
-    area_h = 720
-    drawing_area.set_content_width(area_w)
-    drawing_area.set_content_height(area_h)
-
-    image_file = Gio.File.new_for_uri(image_uri)
-    stream = image_file.read(None)
-
-    pixbuf = GdkPixbuf.Pixbuf.new_from_stream(stream, None)
-
-    # Scale down to fit drawing area while preserving aspect ratio
-    img_w = pixbuf.get_width()
-    img_h = pixbuf.get_height()
-    s = min(area_w / img_w, area_h / img_h, 1.0)  # only scale down
-
-    # Border boxes that highlight texts detected in the image
-    # [{x1, y1, x2, y2, text}, ...]
-    bboxes = get_bounding_boxes_paddleocr(image_uri)
-    bboxes_active = [False for bbox in bboxes]  # Track active state of each box
-
-    def on_draw(area, context, area_w, area_h, user_data):
-        # Draw the image onto the drawing area
-        if s < 1.0:
-            pixbuf_scaled = pixbuf.scale_simple(
-                s * img_w, s * img_h, GdkPixbuf.InterpType.BILINEAR
-            )
-        Gdk.cairo_set_source_pixbuf(context, pixbuf_scaled, 0, 0)
-        context.paint()
-
-        # Draw bounding boxes around detected text
-        for i, bbox in enumerate(bboxes):
-            x1, y1, x2, y2 = bbox["x1"], bbox["y1"], bbox["x2"], bbox["y2"]
-            context.set_source_rgba(1, 0, 0, 0.8)  # Red color
-            context.rectangle(s * x1, s * y1, s * (x2 - x1), s * (y2 - y1))
-            context.stroke()
-
-            # If the box is active, fill it with a semi-transparent color
-            if bboxes_active[i]:
-                context.set_source_rgba(1, 0, 0, 0.3)
-                context.rectangle(s * x1, s * y1, s * (x2 - x1), s * (y2 - y1))
-                context.fill()
-
-    def on_click(gesture, n_press, x, y):
-        # Check if the click is inside any of the bounding boxes and update their active state
-        # (x, y) are in scaled coordinates, dividing by s to get original image coordinates
-        for i, bbox in enumerate(bboxes):
-            bboxes_active[i] = is_inside_box(
-                x / s, y / s, bbox["x1"], bbox["y1"], bbox["x2"], bbox["y2"]
-            )
-
-        # Update the status label with the detected text if the box is active
-        if get_unique_active_box(bboxes_active, bboxes) is not None:
-            active_box_idx = get_unique_active_box(bboxes_active, bboxes)
-            status_label.set_text(f"Detected text: {bboxes[active_box_idx]['text']}")
-
-        drawing_area.queue_draw()  # Trigger a redraw to update the bounding boxes
-
-    drawing_area.set_draw_func(on_draw, None)
-
-    # Make drawing area clickable
-    gesture_click = Gtk.GestureClick()
-    gesture_click.connect("pressed", on_click)
-    drawing_area.add_controller(gesture_click)
-
-    status_label = Gtk.Label(label="Click on the image to see detected text.")
-
-    container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-    container.append(drawing_area)
-    container.append(status_label)
-
-    return container
-
-
 class App(Adw.Application):
     def __init__(self):
         super().__init__(application_id="me.bobbyho.GtkCircleToSearch")
@@ -262,8 +187,8 @@ class App(Adw.Application):
         self.connect("shutdown", lambda _: self.quit())
 
     def on_activate(self, app):
-        window = MainWindow(self)
-        window.present()
+        self.window = MainWindow(self)
+        self.window.present()
 
 
 class MainWindow(Adw.ApplicationWindow):
@@ -271,14 +196,80 @@ class MainWindow(Adw.ApplicationWindow):
         super().__init__(application=app, title="Circle to Search")
         self.set_default_size(960, 720)
 
-        drawing_area = make_drawing_area(
-            "file:///home/bobbyho/Projects/gtk-circle-to-search/test-screenshots/spotify.png"
+        drawing_area = ScreenshotView(
+            width_request=960,
+            height_request=720,
+            margin_top=12,
+            margin_bottom=12,
+            margin_start=12,
+            margin_end=12,
         )
 
         container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         container.append(drawing_area)
 
         self.set_content(container)
+
+
+class ScreenshotView(Gtk.Widget):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.screenshot = Gio.File.new_for_uri(
+            "file:///home/bobbyho/Projects/gtk-circle-to-search/test-screenshots/spotify.png"
+        )
+        self.screenshot_texture = Gdk.Texture.new_from_file(self.screenshot)
+
+        # Always fill the given space
+        self.set_hexpand(True)
+        self.set_vexpand(True)
+
+        self.bboxes_color = (
+            59 / 255,
+            130 / 255,
+            246 / 255,
+            0.2,
+        )  # RGBA (scaled to 0-1)
+        self.bboxes = get_bounding_boxes_paddleocr(self.screenshot.get_uri())
+
+        # Listen for click events
+        self.gesture_click = Gtk.GestureClick()
+        self.gesture_click.connect("pressed", self.on_click)
+        self.add_controller(self.gesture_click)
+
+    def do_snapshot(self, s: Gtk.Snapshot):
+        self.width = self.get_width()
+        self.height = self.get_height()
+        self.x_s = self.width / self.screenshot_texture.get_width()
+        self.y_s = self.height / self.screenshot_texture.get_height()
+
+        # Draw screenshot
+        rect_fill = Graphene.Rect().init(0, 0, self.width, self.height)
+        s.append_texture(self.screenshot_texture, rect_fill)
+
+        # Draw bounding boxes using cairo (in image coordinates, not scaled)
+        cr_bbox_layer = s.append_cairo(rect_fill)
+        for bbox in self.bboxes:
+            x1, y1, x2, y2 = bbox["x1"], bbox["y1"], bbox["x2"], bbox["y2"]
+            cr_bbox_layer.set_source_rgba(*self.bboxes_color)
+            cr_bbox_layer.rectangle(
+                x1 * self.x_s, y1 * self.y_s, (x2 - x1) * self.x_s, (y2 - y1) * self.y_s
+            )
+            cr_bbox_layer.fill()
+
+    def on_click(self, gesture, n_press, x, y):
+        # Check if the click is inside any of the bounding boxes and print the detected text
+        for bbox in self.bboxes:
+            if is_inside_box(
+                x / self.x_s,
+                y / self.y_s,
+                bbox["x1"],
+                bbox["y1"],
+                bbox["x2"],
+                bbox["y2"],
+            ):
+                print("Clicked on text:", bbox["text"])
+                break
 
 
 def show_app() -> None:
