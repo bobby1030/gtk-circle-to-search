@@ -233,7 +233,7 @@ def make_drawing_area(image_uri: str) -> Gtk.DrawingArea:
             )
 
         # Update the status label with the detected text if the box is active
-        if get_unique_active_box(bboxes_active, bboxes):
+        if get_unique_active_box(bboxes_active, bboxes) is not None:
             active_box_idx = get_unique_active_box(bboxes_active, bboxes)
             status_label.set_text(f"Detected text: {bboxes[active_box_idx]['text']}")
 
