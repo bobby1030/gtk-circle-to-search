@@ -8,6 +8,8 @@ import json
 from PIL import Image
 import subprocess
 
+from cairo_helpers import draw_rounded_rectangle
+
 gi.require_version("Xdp", "1.0")
 gi.require_version("Gio", "2.0")
 gi.require_version("Gtk", "4.0")
@@ -279,14 +281,21 @@ class ScreenshotView(Gtk.Widget):
         s.append_texture(self.screenshot_texture, rect_fill)
 
         # Draw bounding boxes using cairo (in image coordinates, not scaled)
-        cr_bbox_layer = s.append_cairo(rect_fill)
+        ctx = s.append_cairo(rect_fill)  # get Cairo context
         for bbox in self.bboxes:
             x1, y1, x2, y2 = bbox["x1"], bbox["y1"], bbox["x2"], bbox["y2"]
-            cr_bbox_layer.set_source_rgba(*self.bboxes_color)
-            cr_bbox_layer.rectangle(
-                x1 * self.x_s, y1 * self.y_s, (x2 - x1) * self.x_s, (y2 - y1) * self.y_s
+
+            ctx.set_source_rgba(*self.bboxes_color)  # set color with alpha
+            # Draw rounded rectangle for the bounding box
+            draw_rounded_rectangle(
+                ctx,
+                x1 * self.x_s,
+                y1 * self.y_s,
+                (x2 - x1) * self.x_s,
+                (y2 - y1) * self.y_s,
+                (y2 - y1) * self.y_s / 2,  # radius = 50% height
             )
-            cr_bbox_layer.fill()
+            ctx.fill()  # fill the rectangle with the color (including alpha)
 
     def on_tick(self, widget, frame_clock):
         t = frame_clock.get_frame_time() / 1_000_000.0  # microseconds -> seconds
