@@ -8,7 +8,7 @@ import json
 from PIL import Image
 import subprocess
 
-from cairo_helpers import draw_rounded_rectangle
+from widgets import ScreenshotView
 
 gi.require_version("Xdp", "1.0")
 gi.require_version("Gio", "2.0")
@@ -198,6 +198,7 @@ class App(Adw.Application):
     def __init__(self, screenshot_uri):
         super().__init__(application_id="me.bobbyho.GtkCircleToSearch")
         self.screenshot_uri = screenshot_uri
+        self.screenshot_path = Gio.File.new_for_uri(screenshot_uri).get_path()
 
         self.connect("activate", self.on_activate)
         self.connect("shutdown", lambda _: self.quit())
@@ -212,15 +213,14 @@ class MainWindow(Adw.ApplicationWindow):
         super().__init__(application=app, title="Circle to Search")
         self.set_default_size(960, 720)
 
+        def box_button_onclick(box):
+            wl_copy(box.get("text", ""))
+            text_buffer.set_text(f"Copied to clipboard: {box.get('text', '')}")
+
         drawing_area = ScreenshotView(
-            screenshot_uri=app.screenshot_uri,
-            text_onclick=lambda text: text_buffer.set_text(text),
-            width_request=960,
-            height_request=720,
-            margin_top=12,
-            margin_bottom=12,
-            margin_start=12,
-            margin_end=12,
+            image_path=app.screenshot_path,
+            boxes=get_bounding_boxes_paddleocr(app.screenshot_uri),
+            box_button_onclick=box_button_onclick,
         )
 
         text_buffer = Gtk.TextBuffer(
@@ -239,104 +239,6 @@ class MainWindow(Adw.ApplicationWindow):
         container.append(detected_text)
 
         self.set_content(container)
-
-
-class ScreenshotView(Gtk.Widget):
-    def __init__(self, screenshot_uri, text_onclick=None, **kwargs):
-        super().__init__(**kwargs)
-
-        self.text_onclick = text_onclick  # Callback function to call when text is clicked, with the detected text as argument
-        self.screenshot = Gio.File.new_for_uri(screenshot_uri)
-        self.screenshot_texture = Gdk.Texture.new_from_file(self.screenshot)
-
-        # Always fill the given space
-        self.set_hexpand(True)
-        self.set_vexpand(True)
-
-        self.bboxes_color = (
-            59 / 255,
-            130 / 255,
-            246 / 255,
-            0.4,
-        )  # RGBA (scaled to 0-1)
-        self.bboxes = get_bounding_boxes_paddleocr(self.screenshot.get_uri())
-
-        # Listen for click events
-        self.gesture_click = Gtk.GestureClick()
-        self.gesture_click.connect("pressed", self.on_click)
-        self.add_controller(self.gesture_click)
-
-        # Set up transition for bounding box alpha
-        self._t0 = None
-        self.add_tick_callback(self.on_tick)
-
-    def do_snapshot(self, s: Gtk.Snapshot):
-        self.width = self.get_width()
-        self.height = self.get_height()
-        self.x_s = self.width / self.screenshot_texture.get_width()
-        self.y_s = self.height / self.screenshot_texture.get_height()
-
-        # Draw screenshot
-        rect_fill = Graphene.Rect().init(0, 0, self.width, self.height)
-        s.append_texture(self.screenshot_texture, rect_fill)
-
-        # Draw bounding boxes using cairo (in image coordinates, not scaled)
-        ctx = s.append_cairo(rect_fill)  # get Cairo context
-        for bbox in self.bboxes:
-            x1, y1, x2, y2 = bbox["x1"], bbox["y1"], bbox["x2"], bbox["y2"]
-
-            ctx.set_source_rgba(*self.bboxes_color)  # set color with alpha
-            # Draw rounded rectangle for the bounding box
-            draw_rounded_rectangle(
-                ctx,
-                x1 * self.x_s,
-                y1 * self.y_s,
-                (x2 - x1) * self.x_s,
-                (y2 - y1) * self.y_s,
-                (y2 - y1) * self.y_s / 2,  # radius = 50% height
-            )
-            ctx.fill()  # fill the rectangle with the color (including alpha)
-
-    def on_tick(self, widget, frame_clock):
-        t = frame_clock.get_frame_time() / 1_000_000.0  # microseconds -> seconds
-        if self._t0 is None:
-            self._t0 = t  # init t0 on the first tick
-
-        # Fade-in effect for bounding boxes
-        elapsed = t - self._t0
-        fade_in_duration = 0.75  # seconds
-        alpha_end = 0.35  # final alpha value for bounding boxes
-
-        if elapsed < fade_in_duration:
-            alpha = elapsed / fade_in_duration * alpha_end
-            self.bboxes_color = (
-                *self.bboxes_color[0:3],
-                alpha,
-            )
-        else:
-            return False  # stop animating after fade-in is complete
-
-        self.queue_draw()
-        return True  # keep animating
-
-    def on_click(self, gesture, n_press, x, y):
-        # Check if the click is inside any of the bounding boxes and print the detected text
-        for bbox in self.bboxes:
-            if is_inside_box(
-                x / self.x_s,
-                y / self.y_s,
-                bbox["x1"],
-                bbox["y1"],
-                bbox["x2"],
-                bbox["y2"],
-            ):
-                if self.text_onclick:
-                    self.text_onclick(bbox["text"])
-
-                # Copy the detected text to clipboard using wl-copy
-                wl_copy(bbox["text"])
-
-                break
 
 
 def show_app(screenshot_uri) -> None:
