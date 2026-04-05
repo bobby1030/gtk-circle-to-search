@@ -182,8 +182,10 @@ def get_unique_active_box(bboxes_active, bboxes):
 
 
 class App(Adw.Application):
-    def __init__(self):
+    def __init__(self, screenshot_uri):
         super().__init__(application_id="me.bobbyho.GtkCircleToSearch")
+        self.screenshot_uri = screenshot_uri
+
         self.connect("activate", self.on_activate)
         self.connect("shutdown", lambda _: self.quit())
 
@@ -198,6 +200,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.set_default_size(960, 720)
 
         drawing_area = ScreenshotView(
+            screenshot_uri=app.screenshot_uri,
             width_request=960,
             height_request=720,
             margin_top=12,
@@ -213,12 +216,10 @@ class MainWindow(Adw.ApplicationWindow):
 
 
 class ScreenshotView(Gtk.Widget):
-    def __init__(self, **kwargs):
+    def __init__(self, screenshot_uri, **kwargs):
         super().__init__(**kwargs)
 
-        self.screenshot = Gio.File.new_for_uri(
-            "file:///home/bobbyho/Projects/gtk-circle-to-search/test-screenshots/spotify.png"
-        )
+        self.screenshot = Gio.File.new_for_uri(screenshot_uri)
         self.screenshot_texture = Gdk.Texture.new_from_file(self.screenshot)
 
         # Always fill the given space
@@ -299,8 +300,8 @@ class ScreenshotView(Gtk.Widget):
                 break
 
 
-def show_app() -> None:
-    app = App()
+def show_app(screenshot_uri) -> None:
+    app = App(screenshot_uri=screenshot_uri)
     app.run(sys.argv)
 
 
@@ -309,7 +310,7 @@ async def main():
     print("Screenshot taken:", screenshot_uri)
 
     # Display the screenshot in a GTK window
-    show_app()
+    show_app(screenshot_uri)
 
     # Clean up the screenshot file if needed
     if screenshot_uri:
