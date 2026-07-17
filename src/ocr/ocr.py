@@ -27,18 +27,9 @@ class Image:
 
     def __init__(self, image_path: str):
         """
-        Initializes the OCR class with a RapidOCR instance.
+        Initializes the image. The OCR engine is created lazily on first use.
         """
-        self.engine = RapidOCR(
-            params={
-                "Det.lang_type": LangDet.CH,
-                "Cls.lang_type": LangCls.CH,
-                "Rec.lang_type": LangRec.CH,
-                "Det.ocr_version": OCRVersion.PPOCRV6,
-                "Cls.ocr_version": OCRVersion.PPOCRV5,
-                "Rec.ocr_version": OCRVersion.PPOCRV6,
-            }
-        )
+        self.engine: RapidOCR | None = None
         self.image_path = image_path
         self.image = self._load_image()
         self.recognized_texts: list[Text] = []
@@ -53,6 +44,18 @@ class Image:
         return img
 
     def recognize_text(self):
+        if self.engine is None:
+            self.engine = RapidOCR(
+                params={
+                    "Det.lang_type": LangDet.CH,
+                    "Cls.lang_type": LangCls.CH,
+                    "Rec.lang_type": LangRec.CH,
+                    "Det.ocr_version": OCRVersion.PPOCRV6,
+                    "Cls.ocr_version": OCRVersion.PPOCRV5,
+                    "Rec.ocr_version": OCRVersion.PPOCRV6,
+                }
+            )
+
         ocr_output = self.engine(self.image)
 
         for box, text, score in zip(

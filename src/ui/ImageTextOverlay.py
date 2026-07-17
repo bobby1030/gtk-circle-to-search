@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import threading
 from collections.abc import Callable, Sequence
 
 import numpy as np
@@ -7,6 +9,8 @@ import numpy as np
 from gi.repository import Gdk, Graphene, Gtk, GLib  # noqa: E402
 
 from src.ocr.ocr import Image, Text
+
+logger = logging.getLogger(__name__)
 
 
 class ImageTextOverlay(Gtk.Widget):
@@ -17,7 +21,6 @@ class ImageTextOverlay(Gtk.Widget):
     def __init__(
         self,
         image: Image,
-        texts: Sequence[Text],
         on_text_clicked: Callable[[Text], None] | None = None,
         **kwargs,
     ) -> None:
@@ -29,12 +32,49 @@ class ImageTextOverlay(Gtk.Widget):
         self._image_rect = Graphene.Rect().init(
             0, 0, self._image_width, self._image_height
         )
+        self._image = image
         self._on_text_clicked = on_text_clicked
         self._texts: list[Text] = []
         self._buttons: list[Gtk.Button] = []
+        self._ocr_scheduled = False
+        self._ocr_started = False
+        self._ocr_thread: threading.Thread | None = None
+        self._disposed = False
 
         self._install_css()
-        self.set_texts(texts)
+
+    def _start_ocr(self) -> bool:
+        """Start OCR after GTK has rendered the initial image frame."""
+        self._ocr_scheduled = False
+        if self._disposed or self._ocr_started:
+            return GLib.SOURCE_REMOVE
+
+        self._ocr_started = True
+        self._ocr_thread = threading.Thread(
+            target=self._recognize_text,
+            name="image-text-overlay-ocr",
+            daemon=True,
+        )
+        self._ocr_thread.start()
+        return GLib.SOURCE_REMOVE
+
+    def _recognize_text(self) -> None:
+        """Run the blocking OCR pipeline outside the GTK main thread."""
+        try:
+            texts = list(self._image.recognize_text())
+        except Exception:
+            logger.exception("OCR failed for %s", self._image.image_path)
+            GLib.idle_add(self._finish_ocr, None)
+            return
+
+        GLib.idle_add(self._finish_ocr, texts)
+
+    def _finish_ocr(self, texts: list[Text] | None) -> bool:
+        """Apply OCR results on the GTK main thread."""
+        self._ocr_thread = None
+        if not self._disposed and texts is not None:
+            self.set_texts(texts)
+        return GLib.SOURCE_REMOVE
 
     def set_texts(self, texts: Sequence[Text]) -> None:
         """Replace the text regions displayed over the image."""
@@ -105,7 +145,12 @@ class ImageTextOverlay(Gtk.Widget):
         for button in self._buttons:
             self.snapshot_child(button, snapshot)
 
+        if not self._ocr_scheduled and not self._ocr_started:
+            self._ocr_scheduled = True
+            GLib.idle_add(self._start_ocr)
+
     def do_dispose(self) -> None:
+        self._disposed = True
         while self._buttons:
             self._buttons.pop().unparent()
 

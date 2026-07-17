@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from gi.repository import Adw, Gdk, GLib, GObject, Gtk
@@ -43,7 +42,6 @@ class MainWindow(Adw.ApplicationWindow):
         self._overlay_container.set_child(
             ImageTextOverlay(
                 image=image,
-                texts=image.recognize_text(),
                 on_text_clicked=self._handle_text_clicked,
             )
         )
