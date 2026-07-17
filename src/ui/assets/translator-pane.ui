@@ -9,28 +9,17 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
   <template class="TranslatorPane" parent="AdwPreferencesGroup">
     <property name="title" translatable="yes">Translator</property>
     <child>
-      <object class="AdwActionRow" id="source-language-row">
-        <property name="title" translatable="yes">Source language</property>
-        <property name="subtitle" translatable="yes">Detect automatically</property>
+      <object class="AdwComboRow" id="source-language-row">
+        <property name="title" translatable="yes">Translate from</property>
         <property name="icon-name">preferences-desktop-locale-symbolic</property>
-        <child type="suffix">
-          <object class="GtkButton" id="swap-button">
-            <signal name="clicked" handler="on_swap_languages_clicked"/>
-            <property name="sensitive">false</property>
-            <property name="valign">3</property>
-            <property name="icon-name">object-flip-horizontal-symbolic</property>
-            <property name="tooltip-text" translatable="yes">Swap source and target languages</property>
-            <style>
-              <class name="image-button"/>
-              <class name="flat"/>
-            </style>
-          </object>
-        </child>
+        <property name="enable-search">true</property>
+        <property name="search-match-mode">1</property>
       </object>
     </child>
     <child>
       <object class="AdwComboRow" id="language-row">
         <property name="title" translatable="yes">Translate to</property>
+        <property name="icon-name">preferences-desktop-locale-symbolic</property>
         <property name="enable-search">true</property>
         <property name="search-match-mode">1</property>
       </object>

@@ -48,10 +48,6 @@ class MainWindow(Adw.ApplicationWindow):
             "toast-requested",
             self._handle_translator_toast,
         )
-        self._translator_pane.connect(
-            "source-text-replaced",
-            self._handle_translator_source_replaced,
-        )
 
         # Put the image and its text overlay into the overlay container
         self._overlay_container.set_child(
@@ -125,11 +121,3 @@ class MainWindow(Adw.ApplicationWindow):
         if message == "Translation copied to clipboard":
             toast.set_timeout(1)
         self._toast_overlay.add_toast(toast)
-
-    def _handle_translator_source_replaced(
-        self,
-        _pane: TranslatorPane,
-        source_text: str,
-    ) -> None:
-        """Keep all selected-text consumers synchronized after a swap."""
-        self._selected_text.props.text = source_text

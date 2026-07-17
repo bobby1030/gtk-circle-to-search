@@ -25,11 +25,6 @@ class TranslatorPane(Adw.PreferencesGroup):
             None,
             (str,),
         ),
-        "source-text-replaced": (
-            GObject.SignalFlags.RUN_FIRST,
-            None,
-            (str,),
-        ),
     }
 
     AUTO_TRANSLATE_DELAY_MS = 650
@@ -57,12 +52,13 @@ class TranslatorPane(Adw.PreferencesGroup):
         ("Ukrainian", "uk"),
         ("Vietnamese", "vi"),
     )
+    SOURCE_LANGUAGES = (("Detect automatically", "auto"), *LANGUAGES)
     _LANGUAGE_NAMES = {code: name for name, code in LANGUAGES}
     _translation_lock = threading.Lock()
 
     source_text = GObject.Property(type=str, default="")
 
-    _source_language_row: Adw.ActionRow = Gtk.Template.Child(
+    _source_language_row: Adw.ComboRow = Gtk.Template.Child(
         "source-language-row"
     )
     _language_row: Adw.ComboRow = Gtk.Template.Child("language-row")
@@ -76,53 +72,49 @@ class TranslatorPane(Adw.PreferencesGroup):
         "translation-error-row"
     )
     _translate_button: Adw.ButtonRow = Gtk.Template.Child("translate-button")
-    _swap_button: Gtk.Button = Gtk.Template.Child("swap-button")
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self._translation_request_id = 0
         self._active_request_id: int | None = None
         self._auto_translate_source_id: int | None = None
-        self._source_language_code = "auto"
-        self._detected_language_code: str | None = None
-        self._last_source_text = ""
-        self._last_translation = ""
-        self._updating_controls = False
 
+        self._source_language_row.set_model(
+            Gtk.StringList.new(
+                [name for name, _code in self.SOURCE_LANGUAGES]
+            )
+        )
         self._language_row.set_model(
             Gtk.StringList.new([name for name, _code in self.LANGUAGES])
         )
         self._select_target_language("en")
         self.connect("notify::source-text", self._handle_source_text_changed)
+        self._source_language_row.connect(
+            "notify::selected", self._handle_translation_language_changed
+        )
         self._language_row.connect(
-            "notify::selected", self._handle_target_language_changed
+            "notify::selected", self._handle_translation_language_changed
         )
         self._auto_translate_row.connect(
             "notify::active", self._handle_auto_translate_changed
         )
+        self._update_source_language_subtitle(None)
 
     def _handle_source_text_changed(
         self,
         _pane: TranslatorPane,
         _pspec: GObject.ParamSpec,
     ) -> None:
-        if self._updating_controls:
-            return
-
-        self._source_language_code = "auto"
-        self._detected_language_code = None
-        self._source_language_row.set_subtitle("Detect automatically")
+        self._update_source_language_subtitle(None)
         self._invalidate_translation(clear_result=True)
         self._schedule_auto_translation()
 
-    def _handle_target_language_changed(
+    def _handle_translation_language_changed(
         self,
         _row: Adw.ComboRow,
         _pspec: GObject.ParamSpec,
     ) -> None:
-        if self._updating_controls:
-            return
-
+        self._update_source_language_subtitle(None)
         self._invalidate_translation(clear_result=True)
         self._schedule_auto_translation()
 
@@ -143,8 +135,6 @@ class TranslatorPane(Adw.PreferencesGroup):
         self._hide_error()
         if clear_result:
             self._translated_text_buffer.set_text("")
-            self._last_translation = ""
-            self._swap_button.set_sensitive(False)
 
     def _cancel_auto_translation(self) -> None:
         if self._auto_translate_source_id is None:
@@ -190,14 +180,14 @@ class TranslatorPane(Adw.PreferencesGroup):
                 self.emit("toast-requested", "Select some text to translate")
             return
 
+        source_language = self._get_source_language()
         target_language = self._get_target_language()
-        if target_language is None:
+        if source_language is None or target_language is None:
             return
 
         self._translation_request_id += 1
         request_id = self._translation_request_id
         self._active_request_id = request_id
-        self._last_source_text = source_text
         self._hide_error()
         self._set_busy(True)
 
@@ -206,7 +196,7 @@ class TranslatorPane(Adw.PreferencesGroup):
             args=(
                 request_id,
                 source_text,
-                self._source_language_code,
+                source_language,
                 target_language,
             ),
             name="selected-text-translation",
@@ -288,11 +278,8 @@ class TranslatorPane(Adw.PreferencesGroup):
             return GLib.SOURCE_REMOVE
 
         self._hide_error()
-        self._detected_language_code = detected_language
-        self._last_translation = translated_text
         self._translated_text_buffer.set_text(translated_text)
-        self._update_source_language_row(detected_language)
-        self._update_swap_sensitivity()
+        self._update_source_language_subtitle(detected_language)
         return GLib.SOURCE_REMOVE
 
     def _set_busy(self, busy: bool) -> None:
@@ -300,8 +287,8 @@ class TranslatorPane(Adw.PreferencesGroup):
         self._translate_button.set_title(
             "Translating…" if busy else "Translate"
         )
+        self._source_language_row.set_sensitive(not busy)
         self._language_row.set_sensitive(not busy)
-        self._swap_button.set_sensitive(False if busy else self._can_swap())
 
     def _show_error(self, error_message: str | None) -> None:
         detail = "Check your connection and try again."
@@ -314,6 +301,12 @@ class TranslatorPane(Adw.PreferencesGroup):
 
     def _hide_error(self) -> None:
         self._translation_error_row.set_visible(False)
+
+    def _get_source_language(self) -> str | None:
+        language_index = self._source_language_row.get_selected()
+        if language_index >= len(self.SOURCE_LANGUAGES):
+            return None
+        return self.SOURCE_LANGUAGES[language_index][1]
 
     def _get_target_language(self) -> str | None:
         language_index = self._language_row.get_selected()
@@ -328,78 +321,32 @@ class TranslatorPane(Adw.PreferencesGroup):
                 return True
         return False
 
-    def _update_source_language_row(self, language_code: str | None) -> None:
-        if language_code is None:
-            self._source_language_row.set_subtitle("Detected automatically")
+    def _update_source_language_subtitle(
+        self,
+        detected_language: str | None,
+    ) -> None:
+        source_language = self._get_source_language()
+        if source_language != "auto":
+            self._source_language_row.set_subtitle(
+                "Source language selected manually"
+            )
             return
+
+        if detected_language is None:
+            self._source_language_row.set_subtitle("Detect automatically")
+            return
+
         language_name = self._LANGUAGE_NAMES.get(
-            language_code, language_code.upper()
+            detected_language,
+            detected_language.upper(),
         )
-        suffix = "detected" if self._source_language_code == "auto" else "source"
-        self._source_language_row.set_subtitle(f"{language_name} ({suffix})")
-
-    def _can_swap(self) -> bool:
-        target_language = self._get_target_language()
-        source_language = (
-            self._detected_language_code
-            if self._source_language_code == "auto"
-            else self._source_language_code
+        self._source_language_row.set_subtitle(
+            f"Detected: {language_name}"
         )
-        return bool(
-            self._last_source_text
-            and self._last_translation
-            and source_language
-            and target_language
-            and source_language != target_language
-            and source_language in self._LANGUAGE_NAMES
-        )
-
-    def _update_swap_sensitivity(self) -> None:
-        self._swap_button.set_sensitive(self._can_swap())
-
-    @Gtk.Template.Callback()
-    def on_swap_languages_clicked(self, _button: Gtk.Button) -> None:
-        """Use the translation as source and reverse the language direction."""
-        if not self._can_swap():
-            return
-
-        previous_source = self._last_source_text
-        previous_translation = self._last_translation
-        previous_target = self._get_target_language()
-        previous_source_language = (
-            self._detected_language_code
-            if self._source_language_code == "auto"
-            else self._source_language_code
-        )
-        if previous_target is None or previous_source_language is None:
-            return
-
-        self._cancel_auto_translation()
-        self._updating_controls = True
-        try:
-            self.props.source_text = previous_translation
-            self._select_target_language(previous_source_language)
-            # The host updates its selected-text model synchronously. Keep the
-            # guard active while its binding writes the same value back here.
-            self.emit("source-text-replaced", previous_translation)
-        finally:
-            self._updating_controls = False
-
-        self._translation_request_id += 1
-        self._active_request_id = None
-        self._source_language_code = previous_target
-        self._detected_language_code = previous_target
-        self._last_source_text = previous_translation
-        self._last_translation = previous_source
-        self._translated_text_buffer.set_text(previous_source)
-        self._hide_error()
-        self._update_source_language_row(previous_target)
-        self._update_swap_sensitivity()
-        self.emit("toast-requested", "Translation languages swapped")
 
     @staticmethod
     def _detect_language(text: str) -> str | None:
-        """Estimate a source language locally for display and swapping.
+        """Estimate a source language locally for display.
 
         The translators API does not expose Google's detected language in its
         normal string response, so script ranges provide a deterministic hint

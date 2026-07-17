@@ -4,28 +4,16 @@ using Adw 1;
 template $TranslatorPane: Adw.PreferencesGroup {
   title: _("Translator");
 
-  Adw.ActionRow source-language-row {
-    title: _("Source language");
-    subtitle: _("Detect automatically");
+  Adw.ComboRow source-language-row {
+    title: _("Translate from");
     icon-name: "preferences-desktop-locale-symbolic";
-
-    [suffix]
-    Button swap-button {
-      clicked => $on_swap_languages_clicked();
-      sensitive: false;
-      valign: center;
-      icon-name: "object-flip-horizontal-symbolic";
-      tooltip-text: _("Swap source and target languages");
-
-      styles [
-        "image-button",
-        "flat",
-      ]
-    }
+    enable-search: true;
+    search-match-mode: substring;
   }
 
   Adw.ComboRow language-row {
     title: _("Translate to");
+    icon-name: "preferences-desktop-locale-symbolic";
     enable-search: true;
     search-match-mode: substring;
   }
