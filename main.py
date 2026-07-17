@@ -14,6 +14,17 @@ def _compile_blueprints() -> None:
     if not blueprints:
         return
 
+    # Pretify the generated .ui files
+    subprocess.run(
+        [
+            compiler,
+            "format",
+            "-f",
+            *(str(blueprint) for blueprint in blueprints),
+        ],
+        check=True,
+    )
+
     subprocess.run(
         [
             compiler,

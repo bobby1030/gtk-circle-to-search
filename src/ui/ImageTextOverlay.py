@@ -2,13 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 
-import gi
 import numpy as np
 
-gi.require_version("Adw", "1")
-gi.require_version("Gdk", "4.0")
-gi.require_version("Graphene", "1.0")
-gi.require_version("Gtk", "4.0")
 from gi.repository import Gdk, Graphene, Gtk, GLib  # noqa: E402
 
 from src.ocr.ocr import Image, Text
