@@ -38,7 +38,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                       <class name="property"/>
                     </style>
                     <property name="title" translatable="yes">Text</property>
-                    <property name="text" translatable="yes">NA</property>
+                    <property name="text" bind-source="selected_text" bind-property="text" bind-flags="sync-create"/>
                     <child type="suffix">
                       <object class="GtkButton" id="copy-text-button">
                         <style>
@@ -57,7 +57,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                       <class name="property"/>
                     </style>
                     <property name="title" translatable="yes">Confidence</property>
-                    <property name="subtitle" translatable="yes">NA</property>
+                    <property name="subtitle" bind-source="selected_text" bind-property="score" bind-flags="sync-create"/>
                   </object>
                 </child>
                 <child>
@@ -74,4 +74,5 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
       </object>
     </property>
   </template>
+  <object class="SelectedText" id="selected_text"></object>
 </interface>

@@ -60,6 +60,8 @@ class Image:
         ):
             self.recognized_texts.append(Text(box=box, text=text, score=score))
 
+        return self.recognized_texts
+
     def preview(self):
         """
         Visualizes the OCR results on top of the image.

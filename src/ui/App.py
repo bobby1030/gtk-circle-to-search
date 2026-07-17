@@ -24,8 +24,6 @@ class App(Adw.Application):
             self._window = MainWindow(
                 application=self,
                 image=self._image,
-                texts=self._recognized_texts,
-                on_text_clicked=None,
             )
 
         self._window.present()

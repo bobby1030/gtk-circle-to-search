@@ -35,7 +35,7 @@ template $MainWindow: Adw.ApplicationWindow {
           ]
 
           title: _("Text");
-          text: _("NA");
+          text: bind selected_text.text; // Bind text to selected_text GObject
 
           [suffix]
           Button copy-text-button {
@@ -55,7 +55,7 @@ template $MainWindow: Adw.ApplicationWindow {
           ]
 
           title: _("Confidence");
-          subtitle: _("NA");
+          subtitle: bind selected_text.score;
         }
 
         Adw.ButtonRow {
@@ -68,3 +68,5 @@ template $MainWindow: Adw.ApplicationWindow {
     sidebar-position: end;
   };
 }
+
+$SelectedText selected_text {}
