@@ -97,14 +97,12 @@ class TranslatorPane(Adw.PreferencesGroup):
         self._auto_translate_row.connect(
             "notify::active", self._handle_auto_translate_changed
         )
-        self._update_source_language_subtitle()
 
     def _handle_source_text_changed(
         self,
         _pane: TranslatorPane,
         _pspec: GObject.ParamSpec,
     ) -> None:
-        self._update_source_language_subtitle()
         self._invalidate_translation(clear_result=True)
         self._schedule_auto_translation()
 
@@ -113,7 +111,6 @@ class TranslatorPane(Adw.PreferencesGroup):
         _row: Adw.ComboRow,
         _pspec: GObject.ParamSpec,
     ) -> None:
-        self._update_source_language_subtitle()
         self._invalidate_translation(clear_result=True)
         self._schedule_auto_translation()
 
@@ -310,15 +307,6 @@ class TranslatorPane(Adw.PreferencesGroup):
                 self._language_row.set_selected(index)
                 return True
         return False
-
-    def _update_source_language_subtitle(self) -> None:
-        source_language = self._get_source_language()
-        if source_language == "auto":
-            self._source_language_row.set_subtitle("Auto")
-        else:
-            self._source_language_row.set_subtitle(
-                "Source language selected manually"
-            )
 
     @Gtk.Template.Callback()
     def on_copy_translation_clicked(self, _button: Gtk.Button) -> None:
