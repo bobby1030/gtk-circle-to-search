@@ -4,26 +4,103 @@ using Adw 1;
 template $TranslatorPane: Adw.PreferencesGroup {
   title: _("Translator");
 
-  Adw.ComboRow language-row {
-    title: _("Translate to");
+  Adw.ComboRow source-language-row {
+    title: _("Translate from");
+    icon-name: "preferences-desktop-locale-symbolic";
+    enable-search: true;
+    search-match-mode: substring;
   }
 
-  Adw.EntryRow translated-text-row {
-    title: _("Translation");
-    editable: false;
+  Adw.ComboRow language-row {
+    title: _("Translate to");
+    icon-name: "preferences-desktop-locale-symbolic";
+    enable-search: true;
+    search-match-mode: substring;
+  }
+
+  Adw.SwitchRow auto-translate-row {
+    title: _("Translate automatically");
+    subtitle: _("Translate after the selected text stops changing");
+    active: true;
+  }
+
+  Gtk.ListBoxRow {
+    activatable: false;
+    selectable: false;
+
+    Box {
+      orientation: vertical;
+      spacing: 6;
+      margin-start: 12;
+      margin-end: 12;
+      margin-top: 8;
+      margin-bottom: 12;
+
+      Box {
+        spacing: 6;
+
+        Label {
+          label: _("Translation");
+          halign: start;
+          hexpand: true;
+          xalign: 0;
+        }
+
+        Button {
+          clicked => $on_copy_translation_clicked();
+          tooltip-text: _("Copy translation");
+
+          styles [
+            "image-button",
+            "flat",
+          ]
+
+          valign: center;
+          icon-name: "edit-copy-symbolic";
+        }
+      }
+
+      ScrolledWindow {
+        hscrollbar-policy: never;
+        min-content-height: 90;
+        max-content-height: 240;
+        propagate-natural-height: true;
+
+        TextView {
+          buffer: TextBuffer translated-text-buffer {
+            text: _("");
+          };
+
+          editable: false;
+          wrap-mode: word_char;
+          top-margin: 8;
+          bottom-margin: 8;
+          left-margin: 8;
+          right-margin: 8;
+        }
+      }
+    }
+  }
+
+  Adw.ActionRow translation-error-row {
+    visible: false;
+    title: _("Translation failed");
+    subtitle: _("Check your connection and try again.");
+    icon-name: "dialog-error-symbolic";
+
+    styles [
+      "error",
+    ]
 
     [suffix]
     Button {
-      clicked => $on_copy_translation_clicked();
-      tooltip-text: _("Copy translation");
+      clicked => $on_retry_translation_clicked();
+      label: _("Retry");
+      valign: center;
 
       styles [
-        "image-button",
         "flat",
       ]
-
-      valign: center;
-      icon-name: "edit-copy-symbolic";
     }
   }
 

@@ -9,24 +9,109 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
   <template class="TranslatorPane" parent="AdwPreferencesGroup">
     <property name="title" translatable="yes">Translator</property>
     <child>
-      <object class="AdwComboRow" id="language-row">
-        <property name="title" translatable="yes">Translate to</property>
+      <object class="AdwComboRow" id="source-language-row">
+        <property name="title" translatable="yes">Translate from</property>
+        <property name="icon-name">preferences-desktop-locale-symbolic</property>
+        <property name="enable-search">true</property>
+        <property name="search-match-mode">1</property>
       </object>
     </child>
     <child>
-      <object class="AdwEntryRow" id="translated-text-row">
-        <property name="title" translatable="yes">Translation</property>
-        <property name="editable">false</property>
+      <object class="AdwComboRow" id="language-row">
+        <property name="title" translatable="yes">Translate to</property>
+        <property name="icon-name">preferences-desktop-locale-symbolic</property>
+        <property name="enable-search">true</property>
+        <property name="search-match-mode">1</property>
+      </object>
+    </child>
+    <child>
+      <object class="AdwSwitchRow" id="auto-translate-row">
+        <property name="title" translatable="yes">Translate automatically</property>
+        <property name="subtitle" translatable="yes">Translate after the selected text stops changing</property>
+        <property name="active">true</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkListBoxRow">
+        <property name="activatable">false</property>
+        <property name="selectable">false</property>
+        <child>
+          <object class="GtkBox">
+            <property name="orientation">1</property>
+            <property name="spacing">6</property>
+            <property name="margin-start">12</property>
+            <property name="margin-end">12</property>
+            <property name="margin-top">8</property>
+            <property name="margin-bottom">12</property>
+            <child>
+              <object class="GtkBox">
+                <property name="spacing">6</property>
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label" translatable="yes">Translation</property>
+                    <property name="halign">1</property>
+                    <property name="hexpand">true</property>
+                    <property name="xalign">0</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton">
+                    <signal name="clicked" handler="on_copy_translation_clicked"/>
+                    <property name="tooltip-text" translatable="yes">Copy translation</property>
+                    <style>
+                      <class name="image-button"/>
+                      <class name="flat"/>
+                    </style>
+                    <property name="valign">3</property>
+                    <property name="icon-name">edit-copy-symbolic</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkScrolledWindow">
+                <property name="hscrollbar-policy">2</property>
+                <property name="min-content-height">90</property>
+                <property name="max-content-height">240</property>
+                <property name="propagate-natural-height">true</property>
+                <child>
+                  <object class="GtkTextView">
+                    <property name="buffer">
+                      <object class="GtkTextBuffer" id="translated-text-buffer">
+                        <property name="text" translatable="yes"></property>
+                      </object>
+                    </property>
+                    <property name="editable">false</property>
+                    <property name="wrap-mode">3</property>
+                    <property name="top-margin">8</property>
+                    <property name="bottom-margin">8</property>
+                    <property name="left-margin">8</property>
+                    <property name="right-margin">8</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child>
+      <object class="AdwActionRow" id="translation-error-row">
+        <property name="visible">false</property>
+        <property name="title" translatable="yes">Translation failed</property>
+        <property name="subtitle" translatable="yes">Check your connection and try again.</property>
+        <property name="icon-name">dialog-error-symbolic</property>
+        <style>
+          <class name="error"/>
+        </style>
         <child type="suffix">
           <object class="GtkButton">
-            <signal name="clicked" handler="on_copy_translation_clicked"/>
-            <property name="tooltip-text" translatable="yes">Copy translation</property>
+            <signal name="clicked" handler="on_retry_translation_clicked"/>
+            <property name="label" translatable="yes">Retry</property>
+            <property name="valign">3</property>
             <style>
-              <class name="image-button"/>
               <class name="flat"/>
             </style>
-            <property name="valign">3</property>
-            <property name="icon-name">edit-copy-symbolic</property>
           </object>
         </child>
       </object>
