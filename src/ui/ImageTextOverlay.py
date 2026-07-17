@@ -125,7 +125,7 @@ class ImageTextOverlay(Gtk.Widget):
         button.add_css_class("success")
 
         # drop the success class after 1 second
-        GLib.timeout_add(200, lambda: button.remove_css_class("success"))
+        GLib.timeout_add(1000, lambda: button.remove_css_class("success"))
 
         if self._on_text_clicked is not None:
             self._on_text_clicked(text)
@@ -215,15 +215,82 @@ class ImageTextOverlay(Gtk.Widget):
                 min-width: 0;
                 min-height: 0;
                 padding: 0;
-                background-color: rgba(53, 132, 228, 0.20);
+                background-color: transparent;
+                border-color: transparent;
+                border-width: 3px;
+                border-style: solid;
+                transition:
+                    background-color 250ms ease-out,
+                animation: text-overlay-button-fade-in 250ms ease-out;
             }
 
             .text-overlay-button:hover {
-                background-color: rgba(53, 132, 228, 0.40);
+                background-color: alpha(@accent_color, 0.4);
             }
 
             .text-overlay-button.success {
-                background-color: rgba(46, 194, 126, 0.40);
+                background-color: transparent;
+                background-image: none;
+                box-shadow: none;
+                animation: text-overlay-button-border-spin 1s linear both;
+            }
+
+            @keyframes text-overlay-button-border-spin {
+                0% {
+                    border-color:
+                        rgba(35, 120, 255, 0)
+                        rgba(0, 210, 190, 0)
+                        rgba(30, 210, 115, 0)
+                        rgba(0, 210, 190, 0);
+                }
+
+                15% {
+                    border-color:
+                        rgba(35, 120, 255, 0.5)
+                        rgba(0, 210, 190, 0.5)
+                        rgba(30, 210, 115, 0.5)
+                        rgba(0, 210, 190, 0.5);
+                }
+
+                35% {
+                    border-color:
+                        rgba(0, 210, 190, 0.5)
+                        rgba(35, 120, 255, 0.5)
+                        rgba(0, 210, 190, 0.5)
+                        rgba(30, 210, 115, 0.5);
+                }
+
+                55% {
+                    border-color:
+                        rgba(30, 210, 115, 0.5)
+                        rgba(0, 210, 190, 0.5)
+                        rgba(35, 120, 255, 0.5)
+                        rgba(0, 210, 190, 0.5);
+                }
+
+                75% {
+                    border-color:
+                        rgba(0, 210, 190, 0.5)
+                        rgba(30, 210, 115, 0.5)
+                        rgba(0, 210, 190, 0.5)
+                        rgba(35, 120, 255, 0.5);
+                }
+
+                85% {
+                    border-color:
+                        rgba(35, 120, 255, 0.5)
+                        rgba(0, 210, 190, 0.5)
+                        rgba(30, 210, 115, 0.5)
+                        rgba(0, 210, 190, 0.5);
+                }
+
+                100% {
+                    border-color:
+                        rgba(35, 120, 255, 0)
+                        rgba(0, 210, 190, 0)
+                        rgba(30, 210, 115, 0)
+                        rgba(0, 210, 190, 0);
+                }
             }
 
             .ocr-gradient-overlay {
