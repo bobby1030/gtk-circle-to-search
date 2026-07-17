@@ -17,6 +17,9 @@ class ImageTextOverlay(Gtk.Widget):
     """Display an OCR image with clickable text regions over it."""
 
     __gtype_name__ = "ImageTextOverlay"
+    MIN_ZOOM = 1.0
+    MAX_ZOOM = 5.0
+    ZOOM_STEP = 1.12
     OCR_GRADIENT_FADE_MS = 750
 
     def __init__(
@@ -26,6 +29,7 @@ class ImageTextOverlay(Gtk.Widget):
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
+        self.set_overflow(Gtk.Overflow.HIDDEN)
 
         self._texture = Gdk.Texture.new_from_filename(image.image_path)
         self._image_width = self._texture.get_width()
@@ -41,6 +45,11 @@ class ImageTextOverlay(Gtk.Widget):
         self._ocr_started = False
         self._ocr_thread: threading.Thread | None = None
         self._ocr_hide_source: int | None = None
+        self._zoom = self.MIN_ZOOM
+        self._pan_x = 0.0
+        self._pan_y = 0.0
+        self._pointer_x: float | None = None
+        self._pointer_y: float | None = None
         self._disposed = False
 
         # OCR-in-progress gradient overlay
@@ -50,7 +59,87 @@ class ImageTextOverlay(Gtk.Widget):
         self._ocr_gradient.set_visible(False)
         self._ocr_gradient.set_parent(self)
 
+        motion_controller = Gtk.EventControllerMotion.new()
+        motion_controller.connect("motion", self._handle_pointer_motion)
+        self.add_controller(motion_controller)
+
+        scroll_controller = Gtk.EventControllerScroll.new(
+            Gtk.EventControllerScrollFlags.VERTICAL
+        )
+        scroll_controller.connect("scroll", self._handle_scroll)
+        self.add_controller(scroll_controller)
+
         self._install_css()
+
+    def _handle_pointer_motion(
+        self,
+        _controller: Gtk.EventControllerMotion,
+        x: float,
+        y: float,
+    ) -> None:
+        self._pointer_x = x
+        self._pointer_y = y
+
+    def _handle_scroll(
+        self,
+        _controller: Gtk.EventControllerScroll,
+        _delta_x: float,
+        delta_y: float,
+    ) -> bool:
+        if delta_y == 0:
+            return False
+
+        zoom_delta = max(-10.0, min(10.0, -delta_y))
+        new_zoom = max(
+            self.MIN_ZOOM,
+            min(self.MAX_ZOOM, self._zoom * self.ZOOM_STEP**zoom_delta),
+        )
+        if abs(new_zoom - self._zoom) < 1e-6:
+            return True
+
+        width = self.get_width()
+        height = self.get_height()
+        image_width = self._image_rect.get_width()
+        image_height = self._image_rect.get_height()
+        if width > 0 and height > 0 and image_width > 0 and image_height > 0:
+            pointer_x = (
+                self._pointer_x if self._pointer_x is not None else width / 2
+            )
+            pointer_y = (
+                self._pointer_y if self._pointer_y is not None else height / 2
+            )
+            image_x = max(
+                0.0,
+                min(1.0, (pointer_x - self._image_rect.get_x()) / image_width),
+            )
+            image_y = max(
+                0.0,
+                min(1.0, (pointer_y - self._image_rect.get_y()) / image_height),
+            )
+
+            fit_scale = min(
+                width / self._image_width,
+                height / self._image_height,
+            )
+            scaled_width = self._image_width * fit_scale * new_zoom
+            scaled_height = self._image_height * fit_scale * new_zoom
+            self._pan_x = (
+                pointer_x
+                - image_x * scaled_width
+                - (width - scaled_width) / 2
+            )
+            self._pan_y = (
+                pointer_y
+                - image_y * scaled_height
+                - (height - scaled_height) / 2
+            )
+
+        self._zoom = new_zoom
+        if self._zoom == self.MIN_ZOOM:
+            self._pan_x = 0.0
+            self._pan_y = 0.0
+        self.queue_allocate()
+        return True
 
     def _start_ocr(self) -> bool:
         """Start OCR after GTK has rendered the initial image frame."""
@@ -147,11 +236,29 @@ class ImageTextOverlay(Gtk.Widget):
             self._image_rect = Graphene.Rect().init(0, 0, 0, 0)
             return
 
-        scale = min(width / self._image_width, height / self._image_height)
+        scale = (
+            min(width / self._image_width, height / self._image_height)
+            * self._zoom
+        )
         scaled_width = self._image_width * scale
         scaled_height = self._image_height * scale
-        offset_x = (width - scaled_width) / 2
-        offset_y = (height - scaled_height) / 2
+        centered_x = (width - scaled_width) / 2
+        centered_y = (height - scaled_height) / 2
+        offset_x = centered_x + self._pan_x
+        offset_y = centered_y + self._pan_y
+
+        if scaled_width <= width:
+            offset_x = centered_x
+        else:
+            offset_x = max(width - scaled_width, min(0.0, offset_x))
+
+        if scaled_height <= height:
+            offset_y = centered_y
+        else:
+            offset_y = max(height - scaled_height, min(0.0, offset_y))
+
+        self._pan_x = offset_x - centered_x
+        self._pan_y = offset_y - centered_y
 
         self._image_rect = Graphene.Rect().init(
             offset_x, offset_y, scaled_width, scaled_height
@@ -219,8 +326,7 @@ class ImageTextOverlay(Gtk.Widget):
                 border-color: transparent;
                 border-width: 3px;
                 border-style: solid;
-                transition:
-                    background-color 250ms ease-out,
+                transition: background-color 250ms ease-out;
                 animation: text-overlay-button-fade-in 250ms ease-out;
             }
 
