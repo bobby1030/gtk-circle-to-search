@@ -36,22 +36,61 @@ template $TranslatorPane: Adw.PreferencesGroup {
     active: true;
   }
 
-  Adw.EntryRow translated-text-row {
-    title: _("Translation");
-    editable: false;
+  Gtk.ListBoxRow {
+    activatable: false;
+    selectable: false;
 
-    [suffix]
-    Button {
-      clicked => $on_copy_translation_clicked();
-      tooltip-text: _("Copy translation");
+    Box {
+      orientation: vertical;
+      spacing: 6;
+      margin-start: 12;
+      margin-end: 12;
+      margin-top: 8;
+      margin-bottom: 12;
 
-      styles [
-        "image-button",
-        "flat",
-      ]
+      Box {
+        spacing: 6;
 
-      valign: center;
-      icon-name: "edit-copy-symbolic";
+        Label {
+          label: _("Translation");
+          halign: start;
+          hexpand: true;
+          xalign: 0;
+        }
+
+        Button {
+          clicked => $on_copy_translation_clicked();
+          tooltip-text: _("Copy translation");
+
+          styles [
+            "image-button",
+            "flat",
+          ]
+
+          valign: center;
+          icon-name: "edit-copy-symbolic";
+        }
+      }
+
+      ScrolledWindow {
+        hscrollbar-policy: never;
+        min-content-height: 90;
+        max-content-height: 240;
+        propagate-natural-height: true;
+
+        TextView {
+          buffer: TextBuffer translated-text-buffer {
+            text: _("");
+          };
+
+          editable: false;
+          wrap-mode: word_char;
+          top-margin: 8;
+          bottom-margin: 8;
+          left-margin: 8;
+          right-margin: 8;
+        }
+      }
     }
   }
 

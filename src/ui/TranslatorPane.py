@@ -69,8 +69,8 @@ class TranslatorPane(Adw.PreferencesGroup):
     _auto_translate_row: Adw.SwitchRow = Gtk.Template.Child(
         "auto-translate-row"
     )
-    _translated_text_row: Adw.EntryRow = Gtk.Template.Child(
-        "translated-text-row"
+    _translated_text_buffer: Gtk.TextBuffer = Gtk.Template.Child(
+        "translated-text-buffer"
     )
     _translation_error_row: Adw.ActionRow = Gtk.Template.Child(
         "translation-error-row"
@@ -142,7 +142,7 @@ class TranslatorPane(Adw.PreferencesGroup):
         self._set_busy(False)
         self._hide_error()
         if clear_result:
-            self._translated_text_row.set_text("")
+            self._translated_text_buffer.set_text("")
             self._last_translation = ""
             self._swap_button.set_sensitive(False)
 
@@ -290,7 +290,7 @@ class TranslatorPane(Adw.PreferencesGroup):
         self._hide_error()
         self._detected_language_code = detected_language
         self._last_translation = translated_text
-        self._translated_text_row.set_text(translated_text)
+        self._translated_text_buffer.set_text(translated_text)
         self._update_source_language_row(detected_language)
         self._update_swap_sensitivity()
         return GLib.SOURCE_REMOVE
@@ -391,7 +391,7 @@ class TranslatorPane(Adw.PreferencesGroup):
         self._detected_language_code = previous_target
         self._last_source_text = previous_translation
         self._last_translation = previous_source
-        self._translated_text_row.set_text(previous_source)
+        self._translated_text_buffer.set_text(previous_source)
         self._hide_error()
         self._update_source_language_row(previous_target)
         self._update_swap_sensitivity()
@@ -433,7 +433,12 @@ class TranslatorPane(Adw.PreferencesGroup):
     @Gtk.Template.Callback()
     def on_copy_translation_clicked(self, _button: Gtk.Button) -> None:
         """Copy the translated text to the clipboard."""
-        translated_text = self._translated_text_row.get_text().strip()
+        start, end = self._translated_text_buffer.get_bounds()
+        translated_text = self._translated_text_buffer.get_text(
+            start,
+            end,
+            True,
+        ).strip()
         if not translated_text:
             self.emit("toast-requested", "Nothing to copy yet")
             return
