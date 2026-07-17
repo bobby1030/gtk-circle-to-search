@@ -65,6 +65,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                     </child>
                     <child>
                       <object class="AdwButtonRow">
+                        <signal name="activated" handler="on_google_search_activated"/>
                         <property name="title" translatable="yes">Search with Google</property>
                         <property name="start-icon-name">system-search-symbolic</property>
                       </object>

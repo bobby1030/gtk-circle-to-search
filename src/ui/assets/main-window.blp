@@ -62,6 +62,7 @@ template $MainWindow: Adw.ApplicationWindow {
           }
 
           Adw.ButtonRow {
+            activated => $on_google_search_activated();
             title: _("Search with Google");
             start-icon-name: "system-search-symbolic";
           }

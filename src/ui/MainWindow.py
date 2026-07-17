@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+from urllib.parse import urlencode
 
-from gi.repository import Adw, Gdk, GLib, GObject, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
 from src.ocr.ocr import Image, Text
 from src.ui.ImageTextOverlay import ImageTextOverlay
@@ -70,3 +71,24 @@ class MainWindow(Adw.ApplicationWindow):
         toast = Adw.Toast.new("Text copied to clipboard")
         toast.set_timeout(1)
         self._toast_overlay.add_toast(toast)
+
+    @Gtk.Template.Callback()
+    def on_google_search_activated(self, _row: Adw.ButtonRow) -> None:
+        """Search for the selected OCR text in the default browser."""
+        query = self._selected_text.props.text.strip()
+        if not query or query == "NA":
+            self._toast_overlay.add_toast(
+                Adw.Toast.new("Select some text to search")
+            )
+            return
+
+        uri = f"https://www.google.com/search?{urlencode({'q': query})}"
+        try:
+            launched = Gio.AppInfo.launch_default_for_uri(uri, None)
+        except GLib.Error:
+            launched = False
+
+        if not launched:
+            self._toast_overlay.add_toast(
+                Adw.Toast.new("Could not open the default browser")
+            )
