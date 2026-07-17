@@ -6,66 +6,70 @@ template $MainWindow: Adw.ApplicationWindow {
   default-width: 1400;
   default-height: 800;
 
-  content: Adw.OverlaySplitView {
-    // Image display area
-    content: Adw.Bin overlay_container {};
+  content: Adw.ToastOverlay toast-overlay {
+    child: Adw.OverlaySplitView {
+      // Image display area
+      content: Adw.Bin overlay_container {};
 
-    // Sidebar for recognized text
-    sidebar: Box {
-      orientation: vertical;
-      halign: fill;
-      valign: start;
-      spacing: 30;
-      width-request: 300;
-      margin-start: 20;
-      margin-end: 20;
-      margin-top: 20;
-      margin-bottom: 20;
+      // Sidebar for recognized text
+      sidebar: Box {
+        orientation: vertical;
+        halign: fill;
+        valign: start;
+        spacing: 30;
+        width-request: 300;
+        margin-start: 20;
+        margin-end: 20;
+        margin-top: 20;
+        margin-bottom: 20;
 
-      ListBox {
-        styles [
-          "boxed-list",
-        ]
-
-        selection-mode: none;
-
-        Adw.EntryRow {
+        ListBox {
           styles [
-            "property",
+            "boxed-list",
           ]
 
-          title: _("Text");
-          text: bind selected_text.text; // Bind text to selected_text GObject
+          selection-mode: none;
 
-          [suffix]
-          Button copy-text-button {
+          Adw.EntryRow {
             styles [
-              "image-button",
-              "flat",
+              "property",
             ]
 
-            valign: center;
-            icon-name: "edit-copy-symbolic";
+            title: _("Text");
+            text: bind selected_text.text; // Bind text to selected_text GObject
+
+            [suffix]
+            Button btn-copy-text {
+              clicked => $on_copy_text_clicked();
+
+              styles [
+                "image-button",
+                "flat",
+              ]
+
+              valign: center;
+              icon-name: "edit-copy-symbolic";
+            }
+          }
+
+          Adw.ActionRow {
+            styles [
+              "property",
+            ]
+
+            title: _("Confidence");
+            subtitle: bind selected_text.score;
+          }
+
+          Adw.ButtonRow {
+            title: _("Search with Google");
+            start-icon-name: "system-search-symbolic";
           }
         }
+      };
 
-        Adw.ActionRow {
-          styles [
-            "property",
-          ]
-
-          title: _("Confidence");
-          subtitle: bind selected_text.score;
-        }
-
-        Adw.ButtonRow {
-          title: _("Search with Google");
-          start-icon-name: "system-search-symbolic";
-        }
-      }
+      sidebar-position: end;
     };
-
-    sidebar-position: end;
   };
 }
 
