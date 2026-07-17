@@ -44,32 +44,78 @@ template $MainWindow: Adw.ApplicationWindow {
 
               selection-mode: none;
 
-              Adw.EntryRow recognized-text-row {
+              Gtk.ListBoxRow recognized-text-row {
                 styles [
                   "property",
                 ]
 
-                title: _("Text");
-                text: bind selected_text.text; // Bind text to selected_text GObject
-                // Commit manual edits after activation or focus loss
-                entry-activated => $on_recognized_text_commit();
+                activatable: false;
+                selectable: false;
 
-                Gtk.EventControllerFocus {
-                  leave => $on_recognized_text_commit();
-                }
+                Box {
+                  orientation: vertical;
+                  spacing: 6;
+                  margin-start: 12;
+                  margin-end: 12;
+                  margin-top: 8;
+                  margin-bottom: 12;
 
-                [suffix]
-                Button btn-copy-text {
-                  clicked => $on_copy_text_clicked();
-                  tooltip-text: _("Copy text");
+                  Box {
+                    spacing: 6;
 
-                  styles [
-                    "image-button",
-                    "flat",
-                  ]
+                    Label {
+                      label: _("Text");
+                      halign: start;
+                      hexpand: true;
+                      xalign: 0;
+                    }
 
-                  valign: center;
-                  icon-name: "edit-copy-symbolic";
+                    Button btn-copy-text {
+                      clicked => $on_copy_text_clicked();
+                      tooltip-text: _("Copy text");
+
+                      styles [
+                        "image-button",
+                        "flat",
+                      ]
+
+                      valign: center;
+                      icon-name: "edit-copy-symbolic";
+                    }
+                  }
+
+                  ScrolledWindow {
+                    styles [
+                      "card",
+                    ]
+
+                    hscrollbar-policy: never;
+                    min-content-height: 120;
+                    max-content-height: 240;
+                    propagate-natural-height: true;
+
+                    TextView recognized-text-view {
+                      buffer: TextBuffer recognized-text-buffer {
+                        // Keep OCR/model updates visible without committing each edit.
+                        text: bind selected_text.text;
+                      };
+
+                      top-margin: 8;
+                      bottom-margin: 8;
+                      left-margin: 8;
+                      right-margin: 8;
+                      wrap-mode: word_char;
+                      accepts-tab: false;
+
+                      Gtk.EventControllerFocus {
+                        leave => $on_recognized_text_commit();
+                      }
+
+                      Gtk.EventControllerKey {
+                        key-pressed => $on_recognized_text_key_pressed();
+                      }
+                    }
+                  }
                 }
               }
 

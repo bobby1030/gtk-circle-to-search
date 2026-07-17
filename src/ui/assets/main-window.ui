@@ -50,28 +50,81 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                             </style>
                             <property name="selection-mode">0</property>
                             <child>
-                              <object class="AdwEntryRow" id="recognized-text-row">
+                              <object class="GtkListBoxRow" id="recognized-text-row">
                                 <style>
                                   <class name="property"/>
                                 </style>
-                                <property name="title" translatable="yes">Text</property>
-                                <property name="text" bind-source="selected_text" bind-property="text" bind-flags="sync-create"/>
-                                <signal name="entry-activated" handler="on_recognized_text_commit"/>
+                                <property name="activatable">false</property>
+                                <property name="selectable">false</property>
                                 <child>
-                                  <object class="GtkEventControllerFocus">
-                                    <signal name="leave" handler="on_recognized_text_commit"/>
-                                  </object>
-                                </child>
-                                <child type="suffix">
-                                  <object class="GtkButton" id="btn-copy-text">
-                                    <signal name="clicked" handler="on_copy_text_clicked"/>
-                                    <property name="tooltip-text" translatable="yes">Copy text</property>
-                                    <style>
-                                      <class name="image-button"/>
-                                      <class name="flat"/>
-                                    </style>
-                                    <property name="valign">3</property>
-                                    <property name="icon-name">edit-copy-symbolic</property>
+                                  <object class="GtkBox">
+                                    <property name="orientation">1</property>
+                                    <property name="spacing">6</property>
+                                    <property name="margin-start">12</property>
+                                    <property name="margin-end">12</property>
+                                    <property name="margin-top">8</property>
+                                    <property name="margin-bottom">12</property>
+                                    <child>
+                                      <object class="GtkBox">
+                                        <property name="spacing">6</property>
+                                        <child>
+                                          <object class="GtkLabel">
+                                            <property name="label" translatable="yes">Text</property>
+                                            <property name="halign">1</property>
+                                            <property name="hexpand">true</property>
+                                            <property name="xalign">0</property>
+                                          </object>
+                                        </child>
+                                        <child>
+                                          <object class="GtkButton" id="btn-copy-text">
+                                            <signal name="clicked" handler="on_copy_text_clicked"/>
+                                            <property name="tooltip-text" translatable="yes">Copy text</property>
+                                            <style>
+                                              <class name="image-button"/>
+                                              <class name="flat"/>
+                                            </style>
+                                            <property name="valign">3</property>
+                                            <property name="icon-name">edit-copy-symbolic</property>
+                                          </object>
+                                        </child>
+                                      </object>
+                                    </child>
+                                    <child>
+                                      <object class="GtkScrolledWindow">
+                                        <style>
+                                          <class name="card"/>
+                                        </style>
+                                        <property name="hscrollbar-policy">2</property>
+                                        <property name="min-content-height">120</property>
+                                        <property name="max-content-height">240</property>
+                                        <property name="propagate-natural-height">true</property>
+                                        <child>
+                                          <object class="GtkTextView" id="recognized-text-view">
+                                            <property name="buffer">
+                                              <object class="GtkTextBuffer" id="recognized-text-buffer">
+                                                <property name="text" bind-source="selected_text" bind-property="text" bind-flags="sync-create"/>
+                                              </object>
+                                            </property>
+                                            <property name="top-margin">8</property>
+                                            <property name="bottom-margin">8</property>
+                                            <property name="left-margin">8</property>
+                                            <property name="right-margin">8</property>
+                                            <property name="wrap-mode">3</property>
+                                            <property name="accepts-tab">false</property>
+                                            <child>
+                                              <object class="GtkEventControllerFocus">
+                                                <signal name="leave" handler="on_recognized_text_commit"/>
+                                              </object>
+                                            </child>
+                                            <child>
+                                              <object class="GtkEventControllerKey">
+                                                <signal name="key-pressed" handler="on_recognized_text_key_pressed"/>
+                                              </object>
+                                            </child>
+                                          </object>
+                                        </child>
+                                      </object>
+                                    </child>
                                   </object>
                                 </child>
                               </object>
