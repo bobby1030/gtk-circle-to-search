@@ -9,79 +9,92 @@ template $MainWindow: Adw.ApplicationWindow {
   content: Adw.ToastOverlay toast-overlay {
     Adw.OverlaySplitView {
       // Image display area
-      content: Adw.Bin overlay_container {};
+      content: Adw.Bin overlay_container {
+        valign: fill;
+        vexpand: true;
+      };
 
       // Sidebar for recognized text
-      sidebar: ScrolledWindow {
-        hscrollbar-policy: never;
+      sidebar: Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {
+          decoration-layout: ":minimize,maximize,close";
+          show-start-title-buttons: false;
+          show-end-title-buttons: true;
+        }
 
-        Box {
-          orientation: vertical;
-          halign: fill;
-          valign: start;
-          spacing: 30;
-          width-request: 300;
-          margin-start: 20;
-          margin-end: 20;
-          margin-top: 20;
-          margin-bottom: 20;
+        content: ScrolledWindow {
+          hscrollbar-policy: never;
 
-          ListBox {
-            styles [
-              "boxed-list",
-            ]
+          Box {
+            orientation: vertical;
+            halign: fill;
+            valign: start;
+            spacing: 30;
+            width-request: 350;
+            margin-start: 20;
+            margin-end: 20;
+            margin-top: 20;
+            margin-bottom: 20;
 
-            selection-mode: none;
-
-            Adw.EntryRow recognized-text-row {
+            ListBox {
               styles [
-                "property",
+                "boxed-list",
               ]
 
-              title: _("Text");
-              text: bind selected_text.text; // Bind text to selected_text GObject
-              // Commit manual edits after activation or focus loss
-              entry-activated => $on_recognized_text_commit();
+              selection-mode: none;
 
-              Gtk.EventControllerFocus {
-                leave => $on_recognized_text_commit();
-              }
-
-              [suffix]
-              Button btn-copy-text {
-                clicked => $on_copy_text_clicked();
-                tooltip-text: _("Copy text");
-
+              Adw.EntryRow recognized-text-row {
                 styles [
-                  "image-button",
-                  "flat",
+                  "property",
                 ]
 
-                valign: center;
-                icon-name: "edit-copy-symbolic";
+                title: _("Text");
+                text: bind selected_text.text; // Bind text to selected_text GObject
+                // Commit manual edits after activation or focus loss
+                entry-activated => $on_recognized_text_commit();
+
+                Gtk.EventControllerFocus {
+                  leave => $on_recognized_text_commit();
+                }
+
+                [suffix]
+                Button btn-copy-text {
+                  clicked => $on_copy_text_clicked();
+                  tooltip-text: _("Copy text");
+
+                  styles [
+                    "image-button",
+                    "flat",
+                  ]
+
+                  valign: center;
+                  icon-name: "edit-copy-symbolic";
+                }
+              }
+
+              Adw.ActionRow {
+                styles [
+                  "property",
+                ]
+
+                title: _("Confidence");
+                subtitle: bind selected_text.score;
+                focusable: false;
+              }
+
+              Adw.ButtonRow {
+                activated => $on_google_search_activated();
+                title: _("Search with Google");
+                start-icon-name: "system-search-symbolic";
               }
             }
 
-            Adw.ActionRow {
-              styles [
-                "property",
-              ]
-
-              title: _("Confidence");
-              subtitle: bind selected_text.score;
-            }
-
-            Adw.ButtonRow {
-              activated => $on_google_search_activated();
-              title: _("Search with Google");
-              start-icon-name: "system-search-symbolic";
+            $TranslatorPane translator-pane {
+              source-text: bind selected_text.text;
             }
           }
-
-          $TranslatorPane translator-pane {
-            source-text: bind selected_text.text;
-          }
-        }
+        };
       };
 
       sidebar-position: end;
