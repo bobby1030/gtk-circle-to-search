@@ -91,11 +91,8 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                                     </child>
                                     <child>
                                       <object class="GtkScrolledWindow">
-                                        <style>
-                                          <class name="card"/>
-                                        </style>
                                         <property name="hscrollbar-policy">2</property>
-                                        <property name="min-content-height">120</property>
+                                        <property name="min-content-height">30</property>
                                         <property name="max-content-height">240</property>
                                         <property name="propagate-natural-height">true</property>
                                         <child>
