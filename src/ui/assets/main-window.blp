@@ -1,0 +1,70 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MainWindow: Adw.ApplicationWindow {
+  title: _("Circle to Search");
+  default-width: 1400;
+  default-height: 800;
+
+  content: Adw.OverlaySplitView {
+    // Image display area
+    content: Adw.Bin overlay_container {};
+
+    // Sidebar for recognized text
+    sidebar: Box {
+      orientation: vertical;
+      halign: fill;
+      valign: start;
+      spacing: 30;
+      width-request: 300;
+      margin-start: 20;
+      margin-end: 20;
+      margin-top: 20;
+      margin-bottom: 20;
+
+      ListBox {
+        styles [
+          "boxed-list",
+        ]
+
+        selection-mode: none;
+
+        Adw.EntryRow {
+          styles [
+            "property",
+          ]
+
+          title: _("Text");
+          text: _("NA");
+
+          [suffix]
+          Button copy-text-button {
+            styles [
+              "image-button",
+              "flat",
+            ]
+
+            valign: center;
+            icon-name: "edit-copy-symbolic";
+          }
+        }
+
+        Adw.ActionRow {
+          styles [
+            "property",
+          ]
+
+          title: _("Confidence");
+          subtitle: _("NA");
+        }
+
+        Adw.ButtonRow {
+          title: _("Search with Google");
+          start-icon-name: "system-search-symbolic";
+        }
+      }
+    };
+
+    sidebar-position: end;
+  };
+}

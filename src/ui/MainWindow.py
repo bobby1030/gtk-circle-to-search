@@ -3,18 +3,25 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from pathlib import Path
 
 import gi
 
 gi.require_version("Adw", "1")
-from gi.repository import Adw  # noqa: E402
+gi.require_version("Gtk", "4.0")
+from gi.repository import Adw, Gtk  # noqa: E402
 
 from src.ocr.ocr import Image, Text
 from src.ui.ImageTextOverlay import ImageTextOverlay
 
 
+@Gtk.Template(filename=str(Path(__file__).with_name("assets") / "main-window.ui"))
 class MainWindow(Adw.ApplicationWindow):
     """An Adwaita window containing an image and its OCR text overlay."""
+
+    __gtype_name__ = "MainWindow"
+
+    _overlay_container: Adw.Bin = Gtk.Template.Child("overlay_container")
 
     def __init__(
         self,
@@ -26,9 +33,7 @@ class MainWindow(Adw.ApplicationWindow):
     ) -> None:
         super().__init__(application=application, **kwargs)
 
-        self.set_title("Circle to Search")
-        self.set_default_size(1200, 800)
-        self.set_content(
+        self._overlay_container.set_child(
             ImageTextOverlay(
                 image=image,
                 texts=texts,
