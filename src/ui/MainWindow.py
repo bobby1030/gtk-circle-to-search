@@ -31,6 +31,9 @@ class MainWindow(Adw.ApplicationWindow):
     _overlay_container: Adw.Bin = Gtk.Template.Child("overlay_container")
     _toast_overlay: Adw.ToastOverlay = Gtk.Template.Child("toast-overlay")
     _selected_text: SelectedText = Gtk.Template.Child("selected_text")
+    _recognized_text_row: Adw.EntryRow = Gtk.Template.Child(
+        "recognized-text-row"
+    )
     _btn_copy_text: Gtk.Button = Gtk.Template.Child("btn-copy-text")
     _translator_pane: TranslatorPane = Gtk.Template.Child("translator-pane")
 
@@ -63,6 +66,16 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Copy the complete selection using the existing copy action.
         self._btn_copy_text.activate()
+
+    @Gtk.Template.Callback()
+    def on_recognized_text_commit(
+        self,
+        _source: Adw.EntryRow | Gtk.EventControllerFocus,
+    ) -> None:
+        """Commit manual edits after activation or focus loss."""
+        text = self._recognized_text_row.get_text()
+        if text != self._selected_text.props.text:
+            self._selected_text.props.text = text
 
     @Gtk.Template.Callback()
     def on_copy_text_clicked(self, _button: Gtk.Button) -> None:

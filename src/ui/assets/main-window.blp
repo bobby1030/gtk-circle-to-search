@@ -33,13 +33,19 @@ template $MainWindow: Adw.ApplicationWindow {
 
             selection-mode: none;
 
-            Adw.EntryRow {
+            Adw.EntryRow recognized-text-row {
               styles [
                 "property",
               ]
 
               title: _("Text");
               text: bind selected_text.text; // Bind text to selected_text GObject
+              // Commit manual edits after activation or focus loss
+              entry-activated => $on_recognized_text_commit();
+
+              Gtk.EventControllerFocus {
+                leave => $on_recognized_text_commit();
+              }
 
               [suffix]
               Button btn-copy-text {
