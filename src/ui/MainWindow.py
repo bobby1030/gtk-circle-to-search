@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from gi.repository import Adw, Gdk, GLib, GObject, Gtk
@@ -42,17 +43,18 @@ class MainWindow(Adw.ApplicationWindow):
         self._overlay_container.set_child(
             ImageTextOverlay(
                 image=image,
-                on_text_clicked=self._handle_text_clicked,
+                on_texts_selected=self._handle_texts_selected,
             )
         )
 
-    def _handle_text_clicked(self, text: Text) -> None:
-        "Handle a click on a text bounding box by updating the selected text property."
-        self._selected_text.props.text = text.text
-        self._selected_text.props.score = f"{text.score:.3f}"
-        print(f"Selected text: {text.text} (score: {text.score:.3f})")
+    def _handle_texts_selected(self, texts: Sequence[Text]) -> None:
+        """Update the selected-text model from one or more OCR regions."""
+        combined_text = "\n".join(text.text for text in texts)
+        average_score = sum(text.score for text in texts) / len(texts)
+        self._selected_text.props.text = combined_text
+        self._selected_text.props.score = f"{average_score:.3f}"
 
-        # When clicking on a text, activate the copy button
+        # Copy the complete selection using the existing copy action.
         self._btn_copy_text.activate()
 
     @Gtk.Template.Callback()

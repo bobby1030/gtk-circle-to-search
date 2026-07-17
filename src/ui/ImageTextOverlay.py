@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import threading
 from collections.abc import Callable, Sequence
 
@@ -20,12 +21,13 @@ class ImageTextOverlay(Gtk.Widget):
     MIN_ZOOM = 1.0
     MAX_ZOOM = 5.0
     ZOOM_STEP = 1.12
+    AREA_SELECT_THRESHOLD = 5.0
     OCR_GRADIENT_FADE_MS = 750
 
     def __init__(
         self,
         image: Image,
-        on_text_clicked: Callable[[Text], None] | None = None,
+        on_texts_selected: Callable[[Sequence[Text]], None] | None = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -38,9 +40,10 @@ class ImageTextOverlay(Gtk.Widget):
             0, 0, self._image_width, self._image_height
         )
         self._image = image
-        self._on_text_clicked = on_text_clicked
+        self._on_texts_selected = on_texts_selected
         self._texts: list[Text] = []
         self._buttons: list[Gtk.Button] = []
+        self._selected_texts: list[Text] = []
         self._ocr_scheduled = False
         self._ocr_started = False
         self._ocr_thread: threading.Thread | None = None
@@ -50,6 +53,10 @@ class ImageTextOverlay(Gtk.Widget):
         self._pan_y = 0.0
         self._pointer_x: float | None = None
         self._pointer_y: float | None = None
+        self._drag_origin: tuple[float, float] | None = None
+        self._selection_start: tuple[float, float] | None = None
+        self._selection_end: tuple[float, float] | None = None
+        self._is_area_selecting = False
         self._disposed = False
 
         # OCR-in-progress gradient overlay
@@ -58,6 +65,12 @@ class ImageTextOverlay(Gtk.Widget):
         self._ocr_gradient.set_can_target(False)
         self._ocr_gradient.set_visible(False)
         self._ocr_gradient.set_parent(self)
+
+        self._area_selector = Gtk.Box()
+        self._area_selector.add_css_class("text-area-selector")
+        self._area_selector.set_can_target(False)
+        self._area_selector.set_visible(False)
+        self._area_selector.set_parent(self)
 
         motion_controller = Gtk.EventControllerMotion.new()
         motion_controller.connect("motion", self._handle_pointer_motion)
@@ -68,6 +81,14 @@ class ImageTextOverlay(Gtk.Widget):
         )
         scroll_controller.connect("scroll", self._handle_scroll)
         self.add_controller(scroll_controller)
+
+        drag_controller = Gtk.GestureDrag.new()
+        drag_controller.set_button(Gdk.BUTTON_PRIMARY)
+        drag_controller.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        drag_controller.connect("drag-begin", self._handle_drag_begin)
+        drag_controller.connect("drag-update", self._handle_drag_update)
+        drag_controller.connect("drag-end", self._handle_drag_end)
+        self.add_controller(drag_controller)
 
         self._install_css()
 
@@ -141,6 +162,108 @@ class ImageTextOverlay(Gtk.Widget):
         self.queue_allocate()
         return True
 
+    def _handle_drag_begin(
+        self,
+        _gesture: Gtk.GestureDrag,
+        start_x: float,
+        start_y: float,
+    ) -> None:
+        self._drag_origin = (start_x, start_y)
+        start = self._clamp_to_visible_image(start_x, start_y)
+        self._selection_start = start
+        self._selection_end = start
+        self._is_area_selecting = False
+        self._area_selector.set_visible(False)
+
+    def _handle_drag_update(
+        self,
+        gesture: Gtk.GestureDrag,
+        offset_x: float,
+        offset_y: float,
+    ) -> None:
+        if self._selection_start is None or self._drag_origin is None:
+            return
+
+        if not self._is_area_selecting and math.hypot(
+            offset_x, offset_y
+        ) >= self.AREA_SELECT_THRESHOLD:
+            self._is_area_selecting = True
+            gesture.set_state(Gtk.EventSequenceState.CLAIMED)
+            self._area_selector.set_visible(True)
+            self.set_cursor_from_name("crosshair")
+
+        if not self._is_area_selecting:
+            return
+
+        start_x, start_y = self._drag_origin
+        self._selection_end = self._clamp_to_visible_image(
+            start_x + offset_x,
+            start_y + offset_y,
+        )
+        self.queue_allocate()
+
+    def _handle_drag_end(
+        self,
+        gesture: Gtk.GestureDrag,
+        offset_x: float,
+        offset_y: float,
+    ) -> None:
+        self._handle_drag_update(gesture, offset_x, offset_y)
+
+        if self._is_area_selecting:
+            selected = [
+                text
+                for text, button in zip(self._texts, self._buttons)
+                if self._selection_intersects(button.get_allocation())
+            ]
+            self._select_texts(selected, keep_highlight=True)
+
+        self._drag_origin = None
+        self._selection_start = None
+        self._selection_end = None
+        self._is_area_selecting = False
+        self._area_selector.set_visible(False)
+        self.set_cursor(None)
+
+    def _clamp_to_visible_image(self, x: float, y: float) -> tuple[float, float]:
+        left = max(0.0, self._image_rect.get_x())
+        top = max(0.0, self._image_rect.get_y())
+        right = min(
+            float(self.get_width()),
+            self._image_rect.get_x() + self._image_rect.get_width(),
+        )
+        bottom = min(
+            float(self.get_height()),
+            self._image_rect.get_y() + self._image_rect.get_height(),
+        )
+        return max(left, min(right, x)), max(top, min(bottom, y))
+
+    def _selection_bounds(self) -> tuple[float, float, float, float] | None:
+        if self._selection_start is None or self._selection_end is None:
+            return None
+
+        start_x, start_y = self._selection_start
+        end_x, end_y = self._selection_end
+        return (
+            min(start_x, end_x),
+            min(start_y, end_y),
+            max(start_x, end_x),
+            max(start_y, end_y),
+        )
+
+    def _selection_intersects(self, allocation: Gdk.Rectangle) -> bool:
+        bounds = self._selection_bounds()
+        if bounds is None:
+            return False
+
+        left, top, right, bottom = bounds
+        return (
+            allocation.x < right
+            and allocation.x + allocation.width > left
+            and allocation.y < bottom
+            and allocation.y + allocation.height > top
+        )
+
     def _start_ocr(self) -> bool:
         """Start OCR after GTK has rendered the initial image frame."""
         self._ocr_scheduled = False
@@ -199,6 +322,7 @@ class ImageTextOverlay(Gtk.Widget):
 
         self._texts = list(texts)
         self._buttons = []
+        self._selected_texts = []
 
         for text in self._texts:
             button = Gtk.Button()
@@ -210,14 +334,34 @@ class ImageTextOverlay(Gtk.Widget):
 
         self.queue_allocate()
 
-    def _handle_click(self, button: Gtk.Button, text: Text) -> None:
-        button.add_css_class("success")
+    def _handle_click(self, _button: Gtk.Button, text: Text) -> None:
+        self._select_texts([text], keep_highlight=False)
 
-        # drop the success class after 1 second
-        GLib.timeout_add(1000, lambda: button.remove_css_class("success"))
+    def _select_texts(
+        self,
+        texts: Sequence[Text],
+        *,
+        keep_highlight: bool,
+    ) -> None:
+        selected_ids = {id(text) for text in texts}
+        self._selected_texts = list(texts)
 
-        if self._on_text_clicked is not None:
-            self._on_text_clicked(text)
+        for text, button in zip(self._texts, self._buttons):
+            if id(text) in selected_ids:
+                if keep_highlight:
+                    button.add_css_class("selected")
+                else:
+                    button.remove_css_class("selected")
+                button.add_css_class("success")
+                GLib.timeout_add(
+                    1000,
+                    lambda button=button: button.remove_css_class("success"),
+                )
+            else:
+                button.remove_css_class("selected")
+
+        if self._selected_texts and self._on_texts_selected is not None:
+            self._on_texts_selected(self._selected_texts)
 
     def do_measure(
         self, orientation: Gtk.Orientation, for_size: int
@@ -285,6 +429,20 @@ class ImageTextOverlay(Gtk.Widget):
             allocation.height = max(1, round((y2 - y1) * scale))
             button.size_allocate(allocation, -1)
 
+        selection_bounds = self._selection_bounds()
+        if self._area_selector.get_visible() and selection_bounds is not None:
+            left, top, right, bottom = selection_bounds
+            selection_allocation = Gdk.Rectangle()
+            selection_allocation.x = math.floor(left)
+            selection_allocation.y = math.floor(top)
+            selection_allocation.width = max(
+                1, math.ceil(right) - selection_allocation.x
+            )
+            selection_allocation.height = max(
+                1, math.ceil(bottom) - selection_allocation.y
+            )
+            self._area_selector.size_allocate(selection_allocation, -1)
+
     def do_snapshot(self, snapshot: Gtk.Snapshot) -> None:
         if self._image_rect.get_width() < 1 or self._image_rect.get_height() < 1:
             return
@@ -297,6 +455,9 @@ class ImageTextOverlay(Gtk.Widget):
         for button in self._buttons:
             self.snapshot_child(button, snapshot)
 
+        if self._area_selector.get_visible():
+            self.snapshot_child(self._area_selector, snapshot)
+
         if not self._ocr_scheduled and not self._ocr_started:
             self._ocr_scheduled = True
             GLib.idle_add(self._start_ocr)
@@ -306,6 +467,8 @@ class ImageTextOverlay(Gtk.Widget):
         self._stop_ocr_animation()
         if self._ocr_gradient.get_parent() is self:
             self._ocr_gradient.unparent()
+        if self._area_selector.get_parent() is self:
+            self._area_selector.unparent()
         while self._buttons:
             self._buttons.pop().unparent()
 
@@ -332,6 +495,20 @@ class ImageTextOverlay(Gtk.Widget):
 
             .text-overlay-button:hover {
                 background-color: alpha(@accent_color, 0.4);
+            }
+
+            .text-overlay-button.selected {
+                background-color: alpha(@accent_color, 0.28);
+            }
+
+            .text-overlay-button.selected:hover {
+                background-color: alpha(@accent_color, 0.42);
+            }
+
+            .text-area-selector {
+                background-color: alpha(@accent_color, 0.12);
+                border: 1px solid alpha(@accent_color, 0.85);
+                border-radius: 6px;
             }
 
             .text-overlay-button.success {
