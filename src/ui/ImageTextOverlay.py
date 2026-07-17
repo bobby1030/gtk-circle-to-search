@@ -6,7 +6,7 @@ from collections.abc import Callable, Sequence
 
 import numpy as np
 
-from gi.repository import Gdk, Graphene, Gtk, GLib  # noqa: E402
+from gi.repository import Gdk, GLib, Graphene, Gtk  # noqa: E402
 
 from src.ocr.ocr import Image, Text
 
@@ -17,6 +17,7 @@ class ImageTextOverlay(Gtk.Widget):
     """Display an OCR image with clickable text regions over it."""
 
     __gtype_name__ = "ImageTextOverlay"
+    OCR_GRADIENT_FADE_MS = 750
 
     def __init__(
         self,
@@ -39,7 +40,15 @@ class ImageTextOverlay(Gtk.Widget):
         self._ocr_scheduled = False
         self._ocr_started = False
         self._ocr_thread: threading.Thread | None = None
+        self._ocr_hide_source: int | None = None
         self._disposed = False
+
+        # OCR-in-progress gradient overlay
+        self._ocr_gradient = Gtk.Box()
+        self._ocr_gradient.add_css_class("ocr-gradient-overlay")
+        self._ocr_gradient.set_can_target(False)
+        self._ocr_gradient.set_visible(False)
+        self._ocr_gradient.set_parent(self)
 
         self._install_css()
 
@@ -50,6 +59,7 @@ class ImageTextOverlay(Gtk.Widget):
             return GLib.SOURCE_REMOVE
 
         self._ocr_started = True
+        self._start_ocr_animation()
         self._ocr_thread = threading.Thread(
             target=self._recognize_text,
             name="image-text-overlay-ocr",
@@ -72,9 +82,26 @@ class ImageTextOverlay(Gtk.Widget):
     def _finish_ocr(self, texts: list[Text] | None) -> bool:
         """Apply OCR results on the GTK main thread."""
         self._ocr_thread = None
+        self._stop_ocr_animation()
         if not self._disposed and texts is not None:
             self.set_texts(texts)
         return GLib.SOURCE_REMOVE
+
+    def _start_ocr_animation(self) -> None:
+        if self._ocr_hide_source is not None:
+            GLib.source_remove(self._ocr_hide_source)
+            self._ocr_hide_source = None
+
+        self._ocr_gradient.set_visible(True)
+        self._ocr_gradient.add_css_class("running")
+
+    def _stop_ocr_animation(self) -> None:
+        if self._ocr_hide_source is not None:
+            GLib.source_remove(self._ocr_hide_source)
+            self._ocr_hide_source = None
+
+        self._ocr_gradient.remove_css_class("running")
+        # self._ocr_gradient.set_visible(False)
 
     def set_texts(self, texts: Sequence[Text]) -> None:
         """Replace the text regions displayed over the image."""
@@ -116,6 +143,10 @@ class ImageTextOverlay(Gtk.Widget):
 
     def do_size_allocate(self, width: int, height: int, baseline: int) -> None:
         del baseline
+        if width <= 0 or height <= 0:
+            self._image_rect = Graphene.Rect().init(0, 0, 0, 0)
+            return
+
         scale = min(width / self._image_width, height / self._image_height)
         scaled_width = self._image_width * scale
         scaled_height = self._image_height * scale
@@ -125,6 +156,13 @@ class ImageTextOverlay(Gtk.Widget):
         self._image_rect = Graphene.Rect().init(
             offset_x, offset_y, scaled_width, scaled_height
         )
+
+        gradient_allocation = Gdk.Rectangle()
+        gradient_allocation.x = round(offset_x)
+        gradient_allocation.y = round(offset_y)
+        gradient_allocation.width = max(1, round(scaled_width))
+        gradient_allocation.height = max(1, round(scaled_height))
+        self._ocr_gradient.size_allocate(gradient_allocation, -1)
 
         for text, button in zip(self._texts, self._buttons):
             box = np.asarray(text.box)
@@ -141,7 +179,14 @@ class ImageTextOverlay(Gtk.Widget):
             button.size_allocate(allocation, -1)
 
     def do_snapshot(self, snapshot: Gtk.Snapshot) -> None:
+        if self._image_rect.get_width() < 1 or self._image_rect.get_height() < 1:
+            return
+
         snapshot.append_texture(self._texture, self._image_rect)
+
+        if self._ocr_gradient.get_visible():
+            self.snapshot_child(self._ocr_gradient, snapshot)
+
         for button in self._buttons:
             self.snapshot_child(button, snapshot)
 
@@ -151,6 +196,9 @@ class ImageTextOverlay(Gtk.Widget):
 
     def do_dispose(self) -> None:
         self._disposed = True
+        self._stop_ocr_animation()
+        if self._ocr_gradient.get_parent() is self:
+            self._ocr_gradient.unparent()
         while self._buttons:
             self._buttons.pop().unparent()
 
@@ -176,6 +224,36 @@ class ImageTextOverlay(Gtk.Widget):
 
             .text-overlay-button.success {
                 background-color: rgba(46, 194, 126, 0.40);
+            }
+
+            .ocr-gradient-overlay {
+                opacity: 0;
+                transition: opacity 750ms ease-in-out;
+                animation: ocr-gradient-spin 2s linear infinite;
+            }
+
+            .ocr-gradient-overlay.running {
+                opacity: 0.55;
+            }
+
+            @keyframes ocr-gradient-spin {
+                from {
+                    background-image: linear-gradient(
+                        -45deg,
+                        rgba(35, 120, 255, 0.58) 0%,
+                        rgba(0, 210, 190, 0.52) 50%,
+                        rgba(30, 210, 115, 0.58) 100%
+                    );
+                }
+
+                to {
+                    background-image: linear-gradient(
+                        315deg,
+                        rgba(35, 120, 255, 0.58) 0%,
+                        rgba(0, 210, 190, 0.52) 50%,
+                        rgba(30, 210, 115, 0.58) 100%
+                    );
+                }
             }
             """
         )
