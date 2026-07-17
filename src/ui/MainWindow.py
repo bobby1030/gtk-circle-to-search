@@ -31,8 +31,8 @@ class MainWindow(Adw.ApplicationWindow):
     _overlay_container: Adw.Bin = Gtk.Template.Child("overlay_container")
     _toast_overlay: Adw.ToastOverlay = Gtk.Template.Child("toast-overlay")
     _selected_text: SelectedText = Gtk.Template.Child("selected_text")
-    _recognized_text_row: Adw.EntryRow = Gtk.Template.Child(
-        "recognized-text-row"
+    _recognized_text_buffer: Gtk.TextBuffer = Gtk.Template.Child(
+        "recognized-text-buffer"
     )
     _btn_copy_text: Gtk.Button = Gtk.Template.Child("btn-copy-text")
     _translator_pane: TranslatorPane = Gtk.Template.Child("translator-pane")
@@ -70,12 +70,30 @@ class MainWindow(Adw.ApplicationWindow):
     @Gtk.Template.Callback()
     def on_recognized_text_commit(
         self,
-        _source: Adw.EntryRow | Gtk.EventControllerFocus,
+        _source: Gtk.EventControllerFocus | Gtk.EventControllerKey,
     ) -> None:
-        """Commit manual edits after activation or focus loss."""
-        text = self._recognized_text_row.get_text()
+        """Commit manual edits after focus loss or Ctrl+Enter."""
+        start, end = self._recognized_text_buffer.get_bounds()
+        text = self._recognized_text_buffer.get_text(start, end, True)
         if text != self._selected_text.props.text:
             self._selected_text.props.text = text
+
+    @Gtk.Template.Callback()
+    def on_recognized_text_key_pressed(
+        self,
+        controller: Gtk.EventControllerKey,
+        keyval: int,
+        _keycode: int,
+        state: Gdk.ModifierType,
+    ) -> bool:
+        """Commit the multiline editor with Ctrl+Enter."""
+        if keyval not in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
+            return False
+        if not state & Gdk.ModifierType.CONTROL_MASK:
+            return False
+
+        self.on_recognized_text_commit(controller)
+        return True
 
     @Gtk.Template.Callback()
     def on_copy_text_clicked(self, _button: Gtk.Button) -> None:
