@@ -10,6 +10,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
 from src.ocr.ocr import Image, Text
 from src.ui.ImageTextOverlay import ImageTextOverlay
+from src.ui.TranslatorPane import TranslatorPane
 
 
 class SelectedText(GObject.Object):
@@ -31,6 +32,7 @@ class MainWindow(Adw.ApplicationWindow):
     _toast_overlay: Adw.ToastOverlay = Gtk.Template.Child("toast-overlay")
     _selected_text: SelectedText = Gtk.Template.Child("selected_text")
     _btn_copy_text: Gtk.Button = Gtk.Template.Child("btn-copy-text")
+    _translator_pane: TranslatorPane = Gtk.Template.Child("translator-pane")
 
     def __init__(
         self,
@@ -39,6 +41,10 @@ class MainWindow(Adw.ApplicationWindow):
         **kwargs,
     ) -> None:
         super().__init__(application=application, **kwargs)
+        self._translator_pane.connect(
+            "toast-requested",
+            self._handle_translator_toast,
+        )
 
         # Put the image and its text overlay into the overlay container
         self._overlay_container.set_child(
@@ -92,3 +98,13 @@ class MainWindow(Adw.ApplicationWindow):
             self._toast_overlay.add_toast(
                 Adw.Toast.new("Could not open the default browser")
             )
+
+    def _handle_translator_toast(
+        self,
+        _pane: TranslatorPane,
+        message: str,
+    ) -> None:
+        toast = Adw.Toast.new(message)
+        if message == "Translation copied to clipboard":
+            toast.set_timeout(1)
+        self._toast_overlay.add_toast(toast)

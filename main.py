@@ -39,9 +39,10 @@ def _compile_blueprints() -> None:
 
 if __name__ == "__main__":
     import sys
-    from src.ui import App
 
     _compile_blueprints()
+
+    from src.ui import App
 
     app = App(application_id="com.github.circle-to-search")
     sys.exit(app.run(sys.argv))

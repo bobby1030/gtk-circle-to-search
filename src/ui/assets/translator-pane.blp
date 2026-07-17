@@ -1,0 +1,35 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $TranslatorPane: Adw.PreferencesGroup {
+  title: _("Translator");
+
+  Adw.ComboRow language-row {
+    title: _("Translate to");
+  }
+
+  Adw.EntryRow translated-text-row {
+    title: _("Translation");
+    editable: false;
+
+    [suffix]
+    Button {
+      clicked => $on_copy_translation_clicked();
+      tooltip-text: _("Copy translation");
+
+      styles [
+        "image-button",
+        "flat",
+      ]
+
+      valign: center;
+      icon-name: "edit-copy-symbolic";
+    }
+  }
+
+  Adw.ButtonRow translate-button {
+    activated => $on_translate_activated();
+    title: _("Translate");
+    start-icon-name: "preferences-desktop-locale-symbolic";
+  }
+}

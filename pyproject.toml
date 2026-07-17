@@ -8,6 +8,7 @@ dependencies = [
     "onnxruntime>=1.27.0",
     "opencv-python>=5.0.0.93",
     "rapidocr>=3.9.1",
+    "translators>=6.0.4",
 ]
 
 [dependency-groups]
