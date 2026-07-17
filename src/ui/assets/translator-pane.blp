@@ -4,8 +4,36 @@ using Adw 1;
 template $TranslatorPane: Adw.PreferencesGroup {
   title: _("Translator");
 
+  Adw.ActionRow source-language-row {
+    title: _("Source language");
+    subtitle: _("Detect automatically");
+    icon-name: "preferences-desktop-locale-symbolic";
+
+    [suffix]
+    Button swap-button {
+      clicked => $on_swap_languages_clicked();
+      sensitive: false;
+      valign: center;
+      icon-name: "object-flip-horizontal-symbolic";
+      tooltip-text: _("Swap source and target languages");
+
+      styles [
+        "image-button",
+        "flat",
+      ]
+    }
+  }
+
   Adw.ComboRow language-row {
     title: _("Translate to");
+    enable-search: true;
+    search-match-mode: substring;
+  }
+
+  Adw.SwitchRow auto-translate-row {
+    title: _("Translate automatically");
+    subtitle: _("Translate after the selected text stops changing");
+    active: true;
   }
 
   Adw.EntryRow translated-text-row {
@@ -24,6 +52,28 @@ template $TranslatorPane: Adw.PreferencesGroup {
 
       valign: center;
       icon-name: "edit-copy-symbolic";
+    }
+  }
+
+  Adw.ActionRow translation-error-row {
+    visible: false;
+    title: _("Translation failed");
+    subtitle: _("Check your connection and try again.");
+    icon-name: "dialog-error-symbolic";
+
+    styles [
+      "error",
+    ]
+
+    [suffix]
+    Button {
+      clicked => $on_retry_translation_clicked();
+      label: _("Retry");
+      valign: center;
+
+      styles [
+        "flat",
+      ]
     }
   }
 

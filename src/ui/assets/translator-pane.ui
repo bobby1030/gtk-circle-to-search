@@ -9,8 +9,37 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
   <template class="TranslatorPane" parent="AdwPreferencesGroup">
     <property name="title" translatable="yes">Translator</property>
     <child>
+      <object class="AdwActionRow" id="source-language-row">
+        <property name="title" translatable="yes">Source language</property>
+        <property name="subtitle" translatable="yes">Detect automatically</property>
+        <property name="icon-name">preferences-desktop-locale-symbolic</property>
+        <child type="suffix">
+          <object class="GtkButton" id="swap-button">
+            <signal name="clicked" handler="on_swap_languages_clicked"/>
+            <property name="sensitive">false</property>
+            <property name="valign">3</property>
+            <property name="icon-name">object-flip-horizontal-symbolic</property>
+            <property name="tooltip-text" translatable="yes">Swap source and target languages</property>
+            <style>
+              <class name="image-button"/>
+              <class name="flat"/>
+            </style>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child>
       <object class="AdwComboRow" id="language-row">
         <property name="title" translatable="yes">Translate to</property>
+        <property name="enable-search">true</property>
+        <property name="search-match-mode">1</property>
+      </object>
+    </child>
+    <child>
+      <object class="AdwSwitchRow" id="auto-translate-row">
+        <property name="title" translatable="yes">Translate automatically</property>
+        <property name="subtitle" translatable="yes">Translate after the selected text stops changing</property>
+        <property name="active">true</property>
       </object>
     </child>
     <child>
@@ -27,6 +56,27 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
             </style>
             <property name="valign">3</property>
             <property name="icon-name">edit-copy-symbolic</property>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child>
+      <object class="AdwActionRow" id="translation-error-row">
+        <property name="visible">false</property>
+        <property name="title" translatable="yes">Translation failed</property>
+        <property name="subtitle" translatable="yes">Check your connection and try again.</property>
+        <property name="icon-name">dialog-error-symbolic</property>
+        <style>
+          <class name="error"/>
+        </style>
+        <child type="suffix">
+          <object class="GtkButton">
+            <signal name="clicked" handler="on_retry_translation_clicked"/>
+            <property name="label" translatable="yes">Retry</property>
+            <property name="valign">3</property>
+            <style>
+              <class name="flat"/>
+            </style>
           </object>
         </child>
       </object>
