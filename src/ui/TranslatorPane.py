@@ -52,8 +52,7 @@ class TranslatorPane(Adw.PreferencesGroup):
         ("Ukrainian", "uk"),
         ("Vietnamese", "vi"),
     )
-    SOURCE_LANGUAGES = (("Detect automatically", "auto"), *LANGUAGES)
-    _LANGUAGE_NAMES = {code: name for name, code in LANGUAGES}
+    SOURCE_LANGUAGES = (("Auto", "auto"), *LANGUAGES)
     _translation_lock = threading.Lock()
 
     source_text = GObject.Property(type=str, default="")
@@ -98,14 +97,14 @@ class TranslatorPane(Adw.PreferencesGroup):
         self._auto_translate_row.connect(
             "notify::active", self._handle_auto_translate_changed
         )
-        self._update_source_language_subtitle(None)
+        self._update_source_language_subtitle()
 
     def _handle_source_text_changed(
         self,
         _pane: TranslatorPane,
         _pspec: GObject.ParamSpec,
     ) -> None:
-        self._update_source_language_subtitle(None)
+        self._update_source_language_subtitle()
         self._invalidate_translation(clear_result=True)
         self._schedule_auto_translation()
 
@@ -114,7 +113,7 @@ class TranslatorPane(Adw.PreferencesGroup):
         _row: Adw.ComboRow,
         _pspec: GObject.ParamSpec,
     ) -> None:
-        self._update_source_language_subtitle(None)
+        self._update_source_language_subtitle()
         self._invalidate_translation(clear_result=True)
         self._schedule_auto_translation()
 
@@ -232,17 +231,11 @@ class TranslatorPane(Adw.PreferencesGroup):
                 )
             if not isinstance(result, str):
                 raise TypeError("Translation service returned a non-text result")
-            detected_language = (
-                source_language
-                if source_language != "auto"
-                else self._detect_language(source_text)
-            )
         except Exception as error:
             logger.exception("Translation failed")
             GLib.idle_add(
                 self._finish_translation,
                 request_id,
-                None,
                 None,
                 str(error),
             )
@@ -252,7 +245,6 @@ class TranslatorPane(Adw.PreferencesGroup):
             self._finish_translation,
             request_id,
             result,
-            detected_language,
             None,
         )
 
@@ -260,7 +252,6 @@ class TranslatorPane(Adw.PreferencesGroup):
         self,
         request_id: int,
         translated_text: str | None,
-        detected_language: str | None,
         error_message: str | None,
     ) -> bool:
         if (
@@ -279,7 +270,6 @@ class TranslatorPane(Adw.PreferencesGroup):
 
         self._hide_error()
         self._translated_text_buffer.set_text(translated_text)
-        self._update_source_language_subtitle(detected_language)
         return GLib.SOURCE_REMOVE
 
     def _set_busy(self, busy: bool) -> None:
@@ -321,61 +311,14 @@ class TranslatorPane(Adw.PreferencesGroup):
                 return True
         return False
 
-    def _update_source_language_subtitle(
-        self,
-        detected_language: str | None,
-    ) -> None:
+    def _update_source_language_subtitle(self) -> None:
         source_language = self._get_source_language()
-        if source_language != "auto":
+        if source_language == "auto":
+            self._source_language_row.set_subtitle("Auto")
+        else:
             self._source_language_row.set_subtitle(
                 "Source language selected manually"
             )
-            return
-
-        if detected_language is None:
-            self._source_language_row.set_subtitle("Detect automatically")
-            return
-
-        language_name = self._LANGUAGE_NAMES.get(
-            detected_language,
-            detected_language.upper(),
-        )
-        self._source_language_row.set_subtitle(
-            f"Detected: {language_name}"
-        )
-
-    @staticmethod
-    def _detect_language(text: str) -> str | None:
-        """Estimate a source language locally for display.
-
-        The translators API does not expose Google's detected language in its
-        normal string response, so script ranges provide a deterministic hint
-        without adding another network request.
-        """
-        if any("\uac00" <= character <= "\ud7af" for character in text):
-            return "ko"
-        if any(
-            "\u3040" <= character <= "\u30ff" for character in text
-        ):
-            return "ja"
-        if any("\u4e00" <= character <= "\u9fff" for character in text):
-            traditional_markers = set("國學體臺灣萬與為這來時會說話後裡點麼")
-            return "zh-TW" if traditional_markers.intersection(text) else "zh-CN"
-        if any("\u0400" <= character <= "\u04ff" for character in text):
-            return "uk" if set("іїєґІЇЄҐ").intersection(text) else "ru"
-        if any("\u0600" <= character <= "\u06ff" for character in text):
-            return "ar"
-        if any("\u0900" <= character <= "\u097f" for character in text):
-            return "hi"
-        if any("\u0e00" <= character <= "\u0e7f" for character in text):
-            return "th"
-        if any("\u0590" <= character <= "\u05ff" for character in text):
-            return "he"
-        if any("\u0370" <= character <= "\u03ff" for character in text):
-            return "el"
-        if any(character.isascii() and character.isalpha() for character in text):
-            return "en"
-        return None
 
     @Gtk.Template.Callback()
     def on_copy_translation_clicked(self, _button: Gtk.Button) -> None:
