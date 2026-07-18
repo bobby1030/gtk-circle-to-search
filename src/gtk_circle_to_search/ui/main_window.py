@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from urllib.parse import urlencode
 
@@ -10,6 +11,8 @@ from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 from ..ocr.ocr import Image, Text
 from .image_text_overlay import ImageTextOverlay
 from .translator_pane import TranslatorPane
+
+logger = logging.getLogger(__name__)
 
 
 class SelectedText(GObject.Object):
@@ -21,9 +24,7 @@ class SelectedText(GObject.Object):
     score = GObject.Property(type=str, default="0.000")  # Confidence score
 
 
-@Gtk.Template(
-    resource_path="/com/github/circle_to_search/ui/main-window.ui"
-)
+@Gtk.Template(resource_path="/com/github/circle_to_search/ui/main-window.ui")
 class MainWindow(Adw.ApplicationWindow):
     """An Adwaita window containing an image and its OCR text overlay."""
 
@@ -35,9 +36,7 @@ class MainWindow(Adw.ApplicationWindow):
     _main_stack: Gtk.Stack = Gtk.Template.Child("main-stack")
     _start_page: Adw.StatusPage = Gtk.Template.Child("start-page")
     _overlay_container: Adw.Bin = Gtk.Template.Child("overlay_container")
-    _image_text_overlay: ImageTextOverlay = Gtk.Template.Child(
-        "image-text-overlay"
-    )
+    _image_text_overlay: ImageTextOverlay = Gtk.Template.Child("image-text-overlay")
     _toast_overlay: Adw.ToastOverlay = Gtk.Template.Child("toast-overlay")
     _selected_text: SelectedText = Gtk.Template.Child("selected_text")
     _recognized_text_buffer: Gtk.TextBuffer = Gtk.Template.Child(
@@ -68,9 +67,54 @@ class MainWindow(Adw.ApplicationWindow):
 
     @Gtk.Template.Callback()
     def on_open_image_clicked(self, _button: Gtk.Button) -> None:
-        """Handle a click on the open image button."""
-        # Switch view to the overlay container
-        self._main_stack.set_visible_child(self._overlay_container)
+        """Prompt the user to choose an image to open."""
+        image_filter = Gtk.FileFilter(name="Images")
+        image_filter.add_mime_type("image/*")
+
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filters.append(image_filter)
+
+        dialog = Gtk.FileDialog(
+            title="Open Image",
+            modal=True,
+            filters=filters,
+            default_filter=image_filter,
+        )
+
+        def _on_open_image_finished(
+            dialog: Gtk.FileDialog,
+            result: Gio.AsyncResult,
+        ) -> None:
+            """Load the image selected through the asynchronous file dialog."""
+            try:
+                file = dialog.open_finish(result)
+            except GLib.Error as error:
+                if not error.matches(
+                    Gio.io_error_quark(),
+                    Gio.IOErrorEnum.CANCELLED,
+                ):
+                    logger.warning("Image selection failed: %s", error)
+                    self._toast_overlay.add_toast(
+                        Adw.Toast.new("Could not open the image chooser")
+                    )
+                return
+
+            path = file.get_path()
+            if path is None:
+                self._toast_overlay.add_toast(
+                    Adw.Toast.new("Only local image files are supported")
+                )
+                return
+
+            try:
+                self.set_image(Image(path))
+            except Exception as error:
+                logger.exception("Could not open image %s", path)
+                self._toast_overlay.add_toast(
+                    Adw.Toast.new(f"Could not open image: {error}")
+                )
+
+        dialog.open(self, None, _on_open_image_finished)
 
     def _handle_texts_selected(
         self,
