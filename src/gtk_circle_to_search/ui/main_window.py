@@ -152,8 +152,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         dialog.open(self, None, _on_open_image_finished)
 
-    @Gtk.Template.Callback()
-    def on_screenshot_clicked(self, _button: Gtk.Button) -> None:
+    def take_screenshot(self) -> None:
         """Request an interactive screenshot through the desktop portal."""
         portal = Xdp.Portal.new()
         parent = XdpGtk4.parent_new_gtk(self)
@@ -190,6 +189,11 @@ class MainWindow(Adw.ApplicationWindow):
             None,
             _on_screenshot_finished,
         )
+
+    @Gtk.Template.Callback()
+    def on_screenshot_clicked(self, _button: Gtk.Button) -> None:
+        """Request a screenshot from the start-page button."""
+        self.take_screenshot()
 
     @Gtk.Template.Callback()
     def on_clear_image_clicked(self, _button: Gtk.Button) -> None:
