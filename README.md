@@ -4,9 +4,7 @@ A GTK 4 and Libadwaita application inspired by the "Circle to Search" feature in
 Android. It allows you to select text from an image and perform actions such as 
 searching or translating the selected text.
 
-## Demo
-
-![GTK Circle to Search demo](placeholder)
+https://github.com/user-attachments/assets/b5a53d40-5ccd-4448-9089-5dba91d4de82
 
 ## Build
 
