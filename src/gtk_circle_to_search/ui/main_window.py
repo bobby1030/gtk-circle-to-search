@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from pathlib import Path
 from urllib.parse import urlencode
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
 from ..ocr.ocr import Image, Text
-from .ImageTextOverlay import ImageTextOverlay
-from .TranslatorPane import TranslatorPane
+from .image_text_overlay import ImageTextOverlay
+from .translator_pane import TranslatorPane
 
 
 class SelectedText(GObject.Object):
@@ -22,7 +21,9 @@ class SelectedText(GObject.Object):
     score = GObject.Property(type=str, default="0.000")  # Confidence score
 
 
-@Gtk.Template(filename=str(Path(__file__).with_name("assets") / "main-window.ui"))
+@Gtk.Template(
+    resource_path="/com/github/circle_to_search/ui/main-window.ui"
+)
 class MainWindow(Adw.ApplicationWindow):
     """An Adwaita window containing an image and its OCR text overlay."""
 

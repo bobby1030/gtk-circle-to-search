@@ -1,5 +1,5 @@
-from ..ocr.ocr import Image
-from .MainWindow import MainWindow
+from .ocr.ocr import Image
+from .ui.main_window import MainWindow
 
 from gi.repository import Adw, Gio  # noqa: E402
 

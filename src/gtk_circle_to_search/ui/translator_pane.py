@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import os
 import threading
-from pathlib import Path
 
 from gi.repository import Adw, Gdk, GLib, GObject, Gtk
 
@@ -13,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 @Gtk.Template(
-    filename=str(Path(__file__).with_name("assets") / "translator-pane.ui")
+    resource_path="/com/github/circle_to_search/ui/translator-pane.ui"
 )
 class TranslatorPane(Adw.PreferencesGroup):
     """Translate text into a selected target language."""

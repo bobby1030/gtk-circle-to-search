@@ -1,3 +1,7 @@
+[build-system]
+build-backend = "mesonpy"
+requires = ["meson-python"]
+
 [project]
 name = "gtk-circle-to-search"
 version = "0.1.0"
@@ -20,4 +24,4 @@ dev = [
 package = true
 
 [project.scripts]
-circle-to-search = "gtk_circle_to_search.main:main"
+circle-to-search = "gtk_circle_to_search.__main__:main"

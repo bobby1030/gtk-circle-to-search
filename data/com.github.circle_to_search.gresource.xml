@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/com/github/circle_to_search/ui">
+    <file alias="main-window.ui" compressed="true">ui/main-window.ui</file>
+    <file alias="translator-pane.ui" compressed="true">ui/translator-pane.ui</file>
+  </gresource>
+</gresources>
