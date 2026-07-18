@@ -48,9 +48,31 @@ template $MainWindow: Adw.ApplicationWindow {
           valign: fill;
           vexpand: true;
 
-          child: $ImageTextOverlay image-text-overlay {
-            image: bind template.active_image;
+          child: Overlay {
+            child: $ImageTextOverlay image-text-overlay {
+              image: bind template.active_image;
+            };
+
+            [overlay]
+            Box floating-toolbar {
+              // floating toolbar for image manipulation
+              orientation: horizontal;
+              halign: end;
+              valign: end;
+              margin-end: 20;
+              margin-bottom: 20;
+              styles ["toolbar", "osd", "floating-toolbar"]
+
+              Button {
+                icon-name: "edit-clear-all-symbolic";
+                tooltip-text: _("Clear Image");
+
+                clicked => $on_clear_image_clicked();
+              }
+
+            }
           };
+
         }
       };
 

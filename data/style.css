@@ -1,0 +1,8 @@
+.floating-toolbar {
+  opacity: 0.55;
+  transition: opacity 180ms ease-out;
+}
+
+.floating-toolbar:hover {
+  opacity: 1;
+}

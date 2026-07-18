@@ -4,4 +4,7 @@
     <file alias="main-window.ui" compressed="true">ui/main-window.ui</file>
     <file alias="translator-pane.ui" compressed="true">ui/translator-pane.ui</file>
   </gresource>
+  <gresource prefix="/com/github/circle_to_search">
+    <file compressed="true">style.css</file>
+  </gresource>
 </gresources>

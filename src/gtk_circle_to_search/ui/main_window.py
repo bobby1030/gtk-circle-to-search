@@ -51,6 +51,17 @@ class MainWindow(Adw.ApplicationWindow):
         **kwargs,
     ) -> None:
         super().__init__(application=application, **kwargs)
+
+        style_provider = Gtk.CssProvider()
+        style_provider.load_from_resource(
+            "/com/github/circle_to_search/style.css"
+        )
+        Gtk.StyleContext.add_provider_for_display(
+            self.get_display(),
+            style_provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
         self._translator_pane.connect(
             "toast-requested",
             self._handle_translator_toast,
@@ -167,6 +178,14 @@ class MainWindow(Adw.ApplicationWindow):
             None,
             _on_screenshot_finished,
         )
+
+    @Gtk.Template.Callback()
+    def on_clear_image_clicked(self, _button: Gtk.Button) -> None:
+        """Clear the active image and return to the start page."""
+        self.props.active_image = None
+        self._selected_text.props.text = "NA"
+        self._selected_text.props.score = "0.000"
+        self._main_stack.set_visible_child(self._start_page)
 
     def _handle_texts_selected(
         self,
