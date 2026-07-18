@@ -34,6 +34,7 @@ class MainWindow(Adw.ApplicationWindow):
     active_image = GObject.Property(type=object)
 
     _main_stack: Gtk.Stack = Gtk.Template.Child("main-stack")
+    _image_drop_target: Gtk.DropTarget = Gtk.Template.Child("image-drop-target")
     _start_page: Adw.StatusPage = Gtk.Template.Child("start-page")
     _overlay_container: Adw.Bin = Gtk.Template.Child("overlay_container")
     _image_text_overlay: ImageTextOverlay = Gtk.Template.Child("image-text-overlay")
@@ -71,10 +72,47 @@ class MainWindow(Adw.ApplicationWindow):
             self._handle_texts_selected,
         )
 
+        self._image_drop_target.set_gtypes([Gdk.FileList])
+
     def set_image(self, image: Image) -> None:
         """Set and display the active image."""
         self.props.active_image = image
         self._main_stack.set_visible_child(self._overlay_container)
+
+    def _load_image_file(self, file: Gio.File) -> bool:
+        """Load a local image file and report whether it succeeded."""
+        path = file.get_path()
+        if path is None:
+            self._toast_overlay.add_toast(
+                Adw.Toast.new("Only local image files are supported")
+            )
+            return False
+
+        try:
+            self.set_image(Image(path))
+        except Exception as error:
+            logger.exception("Could not open image %s", path)
+            self._toast_overlay.add_toast(
+                Adw.Toast.new(f"Could not open image: {error}")
+            )
+            return False
+
+        return True
+
+    @Gtk.Template.Callback()
+    def on_image_dropped(
+        self,
+        _target: Gtk.DropTarget,
+        files: Gdk.FileList,
+        _x: float,
+        _y: float,
+    ) -> bool:
+        """Load the first image file dropped onto the image area."""
+        dropped_files = files.get_files()
+        if not dropped_files:
+            return False
+
+        return self._load_image_file(dropped_files[0])
 
     @Gtk.Template.Callback()
     def on_open_image_clicked(self, _button: Gtk.Button) -> None:
@@ -110,20 +148,7 @@ class MainWindow(Adw.ApplicationWindow):
                     )
                 return
 
-            path = file.get_path()
-            if path is None:
-                self._toast_overlay.add_toast(
-                    Adw.Toast.new("Only local image files are supported")
-                )
-                return
-
-            try:
-                self.set_image(Image(path))
-            except Exception as error:
-                logger.exception("Could not open image %s", path)
-                self._toast_overlay.add_toast(
-                    Adw.Toast.new(f"Could not open image: {error}")
-                )
+            self._load_image_file(file)
 
         dialog.open(self, None, _on_open_image_finished)
 
@@ -157,20 +182,7 @@ class MainWindow(Adw.ApplicationWindow):
                 )
                 return
 
-            path = Gio.File.new_for_uri(uri).get_path()
-            if path is None:
-                self._toast_overlay.add_toast(
-                    Adw.Toast.new("The screenshot is not a local file")
-                )
-                return
-
-            try:
-                self.set_image(Image(path))
-            except Exception as error:
-                logger.exception("Could not open screenshot %s", path)
-                self._toast_overlay.add_toast(
-                    Adw.Toast.new(f"Could not open screenshot: {error}")
-                )
+            self._load_image_file(Gio.File.new_for_uri(uri))
 
         portal.take_screenshot(
             parent,

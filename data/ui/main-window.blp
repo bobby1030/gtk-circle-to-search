@@ -12,6 +12,11 @@ template $MainWindow: Adw.ApplicationWindow {
       content: Stack main-stack {
         transition-type: crossfade;
 
+        Gtk.DropTarget image-drop-target {
+          actions: copy;
+          drop => $on_image_dropped();
+        }
+
         Adw.StatusPage start-page {
           title: _("Recognize texts from an image");
           description: _("Open or drag an image to get started.");
