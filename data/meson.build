@@ -6,7 +6,12 @@ install_data(
 )
 
 install_data(
-  'icons/hicolor/512x512/apps/com.github.circle-to-search.png',
+  'icons/hicolor/scalable/apps/com.github.circle-to-search.svg',
+  install_dir: get_option('datadir') / 'icons/hicolor/scalable/apps',
+)
+
+install_data(
+  'icons/hicolor/512x512/apps/com.github.circle-to-search.svg',
   install_dir: get_option('datadir') / 'icons/hicolor/512x512/apps',
 )
 
