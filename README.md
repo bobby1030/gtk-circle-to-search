@@ -21,6 +21,14 @@ uv build
 The build requires `meson`, `ninja`, `blueprint-compiler`, `libportal`, and
 `libportal-gtk4`.
 
+## Flatpak
+
+GitHub Actions builds an x86-64 Flatpak bundle for pushes to `main`, pull
+requests, and manual workflow runs. Before building, it runs
+`flatpak-pip-generator` with `--pyproject-file pyproject.toml` to generate the
+Flatpak module for the application's Python dependencies. The resulting bundle
+is available from the workflow run's artifacts.
+
 ## Feature plan
 
 ### Implemented

@@ -15,7 +15,6 @@ compiled_blueprints = custom_target(
   command: [
     blueprint_compiler,
     'batch-compile',
-    '--minify',
     '@OUTDIR@',
     '@CURRENT_SOURCE_DIR@',
     '@INPUT@',

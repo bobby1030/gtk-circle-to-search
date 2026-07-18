@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+"""Flatpak entry point for GTK Circle to Search."""
+
+from gtk_circle_to_search.__main__ import main
+
+raise SystemExit(main())

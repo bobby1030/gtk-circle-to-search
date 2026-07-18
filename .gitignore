@@ -5,6 +5,10 @@ build/
 dist/
 wheels/
 *.egg-info
+.flatpak-builder/
+flatpak-app/
+flatpak-repo/
+flatpak/python3-dependencies.json
 
 # Virtual environments
 .venv

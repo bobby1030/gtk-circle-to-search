@@ -1,0 +1,51 @@
+name: Flatpak
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flatpak-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Flatpak
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-49
+      options: --privileged
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Flatpak Python dependency generator
+        run: >-
+          python3 -m pip install
+          --disable-pip-version-check
+          flatpak-pip-generator==2026.5.28
+
+      - name: Generate Python dependency module
+        run: >-
+          python3 -m flatpak_pip_generator
+          --pyproject-file pyproject.toml
+          --runtime org.gnome.Sdk//49
+          --ignore-installed=lxml
+          --prefer-wheels=aiohttp,brotli,brotlicffi,cffi,charset-normalizer,cryptography,frozenlist,jh2,lxml,multidict,numpy,onnxruntime,opencv-python,pillow,propcache,protobuf,psutil,pyclipper,pycryptodome,pyyaml,qh3,shapely,yarl
+          --wheel-arches x86_64
+          --output flatpak/python3-dependencies
+
+      - name: Build Flatpak bundle
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: circle-to-search.flatpak
+          manifest-path: flatpak/com.github.circle-to-search.yml
+          cache-key: flatpak-builder-${{ github.sha }}
+          artifact-name: circle-to-search-${{ github.sha }}.flatpak

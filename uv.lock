@@ -548,6 +548,7 @@ name = "gtk-circle-to-search"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "lxml" },
     { name = "onnxruntime" },
     { name = "opencv-python" },
     { name = "rapidocr" },
@@ -561,6 +562,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "lxml", specifier = ">=5.4.0" },
     { name = "onnxruntime", specifier = ">=1.27.0" },
     { name = "opencv-python", specifier = ">=5.0.0.93" },
     { name = "rapidocr", specifier = ">=3.9.1" },

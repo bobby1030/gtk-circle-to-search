@@ -9,6 +9,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "lxml>=5.4.0",
     "onnxruntime>=1.27.0",
     "opencv-python>=5.0.0.93",
     "rapidocr>=3.9.1",

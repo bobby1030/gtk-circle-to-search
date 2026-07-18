@@ -1,0 +1,54 @@
+id: com.github.circle-to-search
+runtime: org.gnome.Platform
+runtime-version: "49"
+sdk: org.gnome.Sdk
+command: circle-to-search
+
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+
+modules:
+  - name: libportal
+    buildsystem: meson
+    config-opts:
+      - -Dbackend-gtk3=disabled
+      - -Dbackend-gtk4=enabled
+      - -Dbackend-qt5=disabled
+      - -Dbackend-qt6=disabled
+      - -Ddocs=false
+      - -Dintrospection=true
+      - -Dportal-tests=false
+      - -Dtests=false
+      - -Dvapi=false
+    sources:
+      - type: git
+        url: https://github.com/flatpak/libportal.git
+        tag: 0.10.0
+
+  - python3-dependencies.json
+
+  - name: gtk-circle-to-search
+    buildsystem: meson
+    config-opts:
+      - --buildtype=release
+    post-install:
+      - install -Dm755 ../flatpak/circle-to-search /app/bin/circle-to-search
+      - install -Dm644 ../PP-OCRv6_det_small.onnx /app/lib/python3.13/site-packages/rapidocr/models/PP-OCRv6_det_small.onnx
+      - install -Dm644 ../ch_PP-LCNet_x0_25_textline_ori_cls_mobile.onnx /app/lib/python3.13/site-packages/rapidocr/models/ch_PP-LCNet_x0_25_textline_ori_cls_mobile.onnx
+      - install -Dm644 ../PP-OCRv6_rec_small.onnx /app/lib/python3.13/site-packages/rapidocr/models/PP-OCRv6_rec_small.onnx
+    sources:
+      - type: dir
+        path: ..
+      - type: file
+        url: https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.1/onnx/PP-OCRv6/det/PP-OCRv6_det_small.onnx
+        sha256: 090f04abcd9d9a7498bc4ebf677e4cb9bdce1fe4197ddb7e529f1ef44e1ff94f
+      - type: file
+        url: https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.1/onnx/PP-OCRv5/cls/ch_PP-LCNet_x0_25_textline_ori_cls_mobile.onnx
+        sha256: 54379ae5174d026780215fc748a7f31910dee36818e63d49e17dc598ecc82df7
+      - type: file
+        url: https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.1/onnx/PP-OCRv6/rec/PP-OCRv6_rec_small.onnx
+        sha256: 6f327246b50388f3c176ae304bd95767ea6dc0c9ae92153ef8cbe210b3c14884
