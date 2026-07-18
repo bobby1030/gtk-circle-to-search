@@ -8,9 +8,9 @@ from urllib.parse import urlencode
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
-from src.ocr.ocr import Image, Text
-from src.ui.ImageTextOverlay import ImageTextOverlay
-from src.ui.TranslatorPane import TranslatorPane
+from ..ocr.ocr import Image, Text
+from .ImageTextOverlay import ImageTextOverlay
+from .TranslatorPane import TranslatorPane
 
 
 class SelectedText(GObject.Object):
@@ -59,6 +59,11 @@ class MainWindow(Adw.ApplicationWindow):
             "texts-selected",
             self._handle_texts_selected,
         )
+
+    def set_image(self, image: Image) -> None:
+        """Set and display the active image."""
+        self.props.active_image = image
+        self._main_stack.set_visible_child(self._overlay_container)
 
     @Gtk.Template.Callback()
     def on_open_image_clicked(self, _button: Gtk.Button) -> None:

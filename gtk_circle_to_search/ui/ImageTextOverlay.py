@@ -9,7 +9,7 @@ import numpy as np
 
 from gi.repository import Gdk, GLib, GObject, Graphene, Gtk  # noqa: E402
 
-from src.ocr.ocr import Image, Text
+from ..ocr.ocr import Image, Text
 
 logger = logging.getLogger(__name__)
 

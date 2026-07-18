@@ -15,3 +15,9 @@ dependencies = [
 dev = [
     "pygobject-stubs>=2.17.0",
 ]
+
+[tool.uv]
+package = true
+
+[project.scripts]
+circle-to-search = "gtk_circle_to_search.main:main"

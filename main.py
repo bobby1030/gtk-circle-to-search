@@ -2,6 +2,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from gtk_circle_to_search.main import main
+
 
 def _compile_blueprints() -> None:
     """Compile the Blueprint sources before GTK loads their templates."""
@@ -9,7 +11,12 @@ def _compile_blueprints() -> None:
     if compiler is None:
         raise RuntimeError("blueprint-compiler is required to run the app")
 
-    assets_dir = Path(__file__).resolve().parent / "src" / "ui" / "assets"
+    assets_dir = (
+        Path(__file__).resolve().parent
+        / "gtk_circle_to_search"
+        / "ui"
+        / "assets"
+    )
     blueprints = sorted(assets_dir.glob("*.blp"))
     if not blueprints:
         return
@@ -41,8 +48,4 @@ if __name__ == "__main__":
     import sys
 
     _compile_blueprints()
-
-    from src.ui import App
-
-    app = App(application_id="com.github.circle-to-search")
-    sys.exit(app.run(sys.argv))
+    sys.exit(main())
