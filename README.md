@@ -16,13 +16,15 @@ meson setup build
 uv build
 ```
 
-The build requires `meson`, `ninja`, and `blueprint-compiler`.
+The build requires `meson`, `ninja`, `blueprint-compiler`, `libportal`, and
+`libportal-gtk4`.
 
 ## Feature plan
 
 ### Implemented
 
 - Run OCR asynchronously after showing the image.
+- Open image files and capture interactive screenshots through libportal.
 - Highlight recognized regions and support click or drag-area selection.
 - Zoom the image with the scroll wheel.
 - Show an animated OCR progress overlay and selection feedback.

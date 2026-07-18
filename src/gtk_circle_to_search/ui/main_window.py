@@ -6,7 +6,7 @@ import logging
 from collections.abc import Sequence
 from urllib.parse import urlencode
 
-from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Xdp, XdpGtk4
 
 from ..ocr.ocr import Image, Text
 from .image_text_overlay import ImageTextOverlay
@@ -115,6 +115,58 @@ class MainWindow(Adw.ApplicationWindow):
                 )
 
         dialog.open(self, None, _on_open_image_finished)
+
+    @Gtk.Template.Callback()
+    def on_screenshot_clicked(self, _button: Gtk.Button) -> None:
+        """Request an interactive screenshot through the desktop portal."""
+        portal = Xdp.Portal.new()
+        parent = XdpGtk4.parent_new_gtk(self)
+
+        def _on_screenshot_finished(
+            portal: Xdp.Portal,
+            result: Gio.AsyncResult,
+            _parent: Xdp.Parent = parent,
+        ) -> None:
+            try:
+                uri = portal.take_screenshot_finish(result)
+            except GLib.Error as error:
+                if not error.matches(
+                    Gio.io_error_quark(),
+                    Gio.IOErrorEnum.CANCELLED,
+                ):
+                    logger.warning("Screenshot request failed: %s", error)
+                    self._toast_overlay.add_toast(
+                        Adw.Toast.new("Could not take screenshot")
+                    )
+                return
+
+            if not uri:
+                self._toast_overlay.add_toast(
+                    Adw.Toast.new("The screenshot portal returned no image")
+                )
+                return
+
+            path = Gio.File.new_for_uri(uri).get_path()
+            if path is None:
+                self._toast_overlay.add_toast(
+                    Adw.Toast.new("The screenshot is not a local file")
+                )
+                return
+
+            try:
+                self.set_image(Image(path))
+            except Exception as error:
+                logger.exception("Could not open screenshot %s", path)
+                self._toast_overlay.add_toast(
+                    Adw.Toast.new(f"Could not open screenshot: {error}")
+                )
+
+        portal.take_screenshot(
+            parent,
+            Xdp.ScreenshotFlags.INTERACTIVE,
+            None,
+            _on_screenshot_finished,
+        )
 
     def _handle_texts_selected(
         self,
