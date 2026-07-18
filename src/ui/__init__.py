@@ -10,4 +10,9 @@ from .TranslatorPane import TranslatorPane  # noqa: E402
 from .MainWindow import MainWindow  # noqa: E402
 from .App import App  # noqa: E402
 
-__all__ = ["ImageTextOverlay", "TranslatorPane", "MainWindow", "App"]
+__all__ = [
+    "ImageTextOverlay",
+    "TranslatorPane",
+    "MainWindow",
+    "App",
+]

@@ -28,9 +28,15 @@ class MainWindow(Adw.ApplicationWindow):
 
     __gtype_name__ = "MainWindow"
 
+    # state storing the currently active image, which is bound to the overlay
+    active_image = GObject.Property(type=object)
+
     _main_stack: Gtk.Stack = Gtk.Template.Child("main-stack")
     _start_page: Adw.StatusPage = Gtk.Template.Child("start-page")
     _overlay_container: Adw.Bin = Gtk.Template.Child("overlay_container")
+    _image_text_overlay: ImageTextOverlay = Gtk.Template.Child(
+        "image-text-overlay"
+    )
     _toast_overlay: Adw.ToastOverlay = Gtk.Template.Child("toast-overlay")
     _selected_text: SelectedText = Gtk.Template.Child("selected_text")
     _recognized_text_buffer: Gtk.TextBuffer = Gtk.Template.Child(
@@ -42,7 +48,6 @@ class MainWindow(Adw.ApplicationWindow):
     def __init__(
         self,
         application: Adw.Application,
-        image: Image,
         **kwargs,
     ) -> None:
         super().__init__(application=application, **kwargs)
@@ -50,22 +55,22 @@ class MainWindow(Adw.ApplicationWindow):
             "toast-requested",
             self._handle_translator_toast,
         )
-        self.image = image
+        self._image_text_overlay.connect(
+            "texts-selected",
+            self._handle_texts_selected,
+        )
 
     @Gtk.Template.Callback()
     def on_open_image_clicked(self, _button: Gtk.Button) -> None:
         """Handle a click on the open image button."""
-        self._overlay_container.set_child(
-            ImageTextOverlay(
-                image=self.image,
-                on_texts_selected=self._handle_texts_selected,
-            )
-        )
-
         # Switch view to the overlay container
         self._main_stack.set_visible_child(self._overlay_container)
 
-    def _handle_texts_selected(self, texts: Sequence[Text]) -> None:
+    def _handle_texts_selected(
+        self,
+        _overlay: ImageTextOverlay,
+        texts: Sequence[Text],
+    ) -> None:
         """Update the selected-text model from one or more OCR regions."""
         combined_text = "\n".join(text.text for text in texts)
         average_score = sum(text.score for text in texts) / len(texts)

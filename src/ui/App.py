@@ -10,17 +10,14 @@ class App(Adw.Application):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
 
-        self._image: Image | None = None
         self._window: MainWindow | None = None
 
     def do_activate(self) -> None:
         if self._window is None:
             # Initialize the window; its overlay starts OCR asynchronously.
-            self._image = Image("tests/spotify2.png")
+            image = Image("tests/spotify2.png")
 
-            self._window = MainWindow(
-                application=self,
-                image=self._image,
-            )
+            self._window = MainWindow(application=self)
+            self._window.props.active_image = image # bind the image to the overlay
 
         self._window.present()

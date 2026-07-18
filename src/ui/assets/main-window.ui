@@ -54,6 +54,11 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   <object class="AdwBin" id="overlay_container">
                     <property name="valign">0</property>
                     <property name="vexpand">true</property>
+                    <property name="child">
+                      <object class="ImageTextOverlay" id="image-text-overlay">
+                        <property name="image" bind-source="MainWindow" bind-property="active_image" bind-flags="sync-create"/>
+                      </object>
+                    </property>
                   </object>
                 </child>
               </object>

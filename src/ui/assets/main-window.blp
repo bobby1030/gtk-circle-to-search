@@ -46,6 +46,10 @@ template $MainWindow: Adw.ApplicationWindow {
         Adw.Bin overlay_container {
           valign: fill;
           vexpand: true;
+
+          child: $ImageTextOverlay image-text-overlay {
+            image: bind template.active_image;
+          };
         }
       };
 

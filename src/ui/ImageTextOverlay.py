@@ -3,11 +3,11 @@ from __future__ import annotations
 import logging
 import math
 import threading
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
-from gi.repository import Gdk, GLib, Graphene, Gtk  # noqa: E402
+from gi.repository import Gdk, GLib, GObject, Graphene, Gtk  # noqa: E402
 
 from src.ocr.ocr import Image, Text
 
@@ -18,29 +18,37 @@ class ImageTextOverlay(Gtk.Widget):
     """Display an OCR image with clickable text regions over it."""
 
     __gtype_name__ = "ImageTextOverlay"
+
+    image = GObject.Property(type=object)
+
     MIN_ZOOM = 1.0
     MAX_ZOOM = 5.0
     ZOOM_STEP = 1.12
     AREA_SELECT_THRESHOLD = 5.0
     OCR_GRADIENT_FADE_MS = 750
 
+    @GObject.Signal(
+        name="texts-selected",
+        flags=GObject.SignalFlags.RUN_FIRST,
+        arg_types=(object,),
+    )
+    def texts_selected(self, texts: object) -> None:
+        """Emitted when the user selects one or more text regions."""
+        pass
+
     def __init__(
         self,
-        image: Image,
-        on_texts_selected: Callable[[Sequence[Text]], None] | None = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
         self.set_overflow(Gtk.Overflow.HIDDEN)
 
-        self._texture = Gdk.Texture.new_from_filename(image.image_path)
-        self._image_width = self._texture.get_width()
-        self._image_height = self._texture.get_height()
-        self._image_rect = Graphene.Rect().init(
-            0, 0, self._image_width, self._image_height
-        )
-        self._image = image
-        self._on_texts_selected = on_texts_selected
+        self._image: Image | None = None
+        self._texture: Gdk.Texture | None = None
+        self._image_width = 0
+        self._image_height = 0
+        self._image_rect = Graphene.Rect().init(0, 0, 0, 0)
+        self._image_generation = 0
         self._texts: list[Text] = []
         self._buttons: list[Gtk.Button] = []
         self._selected_texts: list[Text] = []
@@ -91,6 +99,57 @@ class ImageTextOverlay(Gtk.Widget):
         self.add_controller(drag_controller)
 
         self._install_css()
+        self.connect("notify::image", self._handle_image_changed)
+
+    def _handle_image_changed(
+        self,
+        _overlay: ImageTextOverlay,
+        _pspec: GObject.ParamSpec,
+    ) -> None:
+        image = self.props.image
+        if image is not None and not isinstance(image, Image):
+            raise TypeError("ImageTextOverlay.image must be an Image or None")
+        if image is self._image:
+            return
+
+        self._image_generation += 1
+        self._image = image
+        self._texture = None
+        self._image_width = 0
+        self._image_height = 0
+        self._image_rect = Graphene.Rect().init(0, 0, 0, 0)
+        self._ocr_scheduled = False
+        self._ocr_started = False
+        self._ocr_thread = None
+        self._zoom = self.MIN_ZOOM
+        self._pan_x = 0.0
+        self._pan_y = 0.0
+        self._pointer_x = None
+        self._pointer_y = None
+        self._drag_origin = None
+        self._selection_start = None
+        self._selection_end = None
+        self._is_area_selecting = False
+        self._area_selector.set_visible(False)
+        self.set_cursor(None)
+        self._stop_ocr_animation()
+        self._ocr_gradient.set_visible(False)
+        self.set_texts(())
+
+        if image is not None:
+            self._texture = Gdk.Texture.new_from_filename(image.image_path)
+            self._image_width = self._texture.get_width()
+            self._image_height = self._texture.get_height()
+            self._image_rect = Graphene.Rect().init(
+                0,
+                0,
+                self._image_width,
+                self._image_height,
+            )
+
+        self.queue_resize()
+        self.queue_allocate()
+        self.queue_draw()
 
     def _handle_pointer_motion(
         self,
@@ -123,12 +182,8 @@ class ImageTextOverlay(Gtk.Widget):
         image_width = self._image_rect.get_width()
         image_height = self._image_rect.get_height()
         if width > 0 and height > 0 and image_width > 0 and image_height > 0:
-            pointer_x = (
-                self._pointer_x if self._pointer_x is not None else width / 2
-            )
-            pointer_y = (
-                self._pointer_y if self._pointer_y is not None else height / 2
-            )
+            pointer_x = self._pointer_x if self._pointer_x is not None else width / 2
+            pointer_y = self._pointer_y if self._pointer_y is not None else height / 2
             image_x = max(
                 0.0,
                 min(1.0, (pointer_x - self._image_rect.get_x()) / image_width),
@@ -145,14 +200,10 @@ class ImageTextOverlay(Gtk.Widget):
             scaled_width = self._image_width * fit_scale * new_zoom
             scaled_height = self._image_height * fit_scale * new_zoom
             self._pan_x = (
-                pointer_x
-                - image_x * scaled_width
-                - (width - scaled_width) / 2
+                pointer_x - image_x * scaled_width - (width - scaled_width) / 2
             )
             self._pan_y = (
-                pointer_y
-                - image_y * scaled_height
-                - (height - scaled_height) / 2
+                pointer_y - image_y * scaled_height - (height - scaled_height) / 2
             )
 
         self._zoom = new_zoom
@@ -184,9 +235,10 @@ class ImageTextOverlay(Gtk.Widget):
         if self._selection_start is None or self._drag_origin is None:
             return
 
-        if not self._is_area_selecting and math.hypot(
-            offset_x, offset_y
-        ) >= self.AREA_SELECT_THRESHOLD:
+        if (
+            not self._is_area_selecting
+            and math.hypot(offset_x, offset_y) >= self.AREA_SELECT_THRESHOLD
+        ):
             self._is_area_selecting = True
             gesture.set_state(Gtk.EventSequenceState.CLAIMED)
             self._area_selector.set_visible(True)
@@ -267,32 +319,42 @@ class ImageTextOverlay(Gtk.Widget):
     def _start_ocr(self) -> bool:
         """Start OCR after GTK has rendered the initial image frame."""
         self._ocr_scheduled = False
-        if self._disposed or self._ocr_started:
+        if self._disposed or self._ocr_started or self._image is None:
             return GLib.SOURCE_REMOVE
 
         self._ocr_started = True
         self._start_ocr_animation()
+        generation = self._image_generation
+        image = self._image
         self._ocr_thread = threading.Thread(
             target=self._recognize_text,
+            args=(image, generation),
             name="image-text-overlay-ocr",
             daemon=True,
         )
         self._ocr_thread.start()
         return GLib.SOURCE_REMOVE
 
-    def _recognize_text(self) -> None:
+    def _recognize_text(self, image: Image, generation: int) -> None:
         """Run the blocking OCR pipeline outside the GTK main thread."""
         try:
-            texts = list(self._image.recognize_text())
+            texts = list(image.recognize_text())
         except Exception:
-            logger.exception("OCR failed for %s", self._image.image_path)
-            GLib.idle_add(self._finish_ocr, None)
+            logger.exception("OCR failed for %s", image.image_path)
+            GLib.idle_add(self._finish_ocr, generation, None)
             return
 
-        GLib.idle_add(self._finish_ocr, texts)
+        GLib.idle_add(self._finish_ocr, generation, texts)
 
-    def _finish_ocr(self, texts: list[Text] | None) -> bool:
+    def _finish_ocr(
+        self,
+        generation: int,
+        texts: list[Text] | None,
+    ) -> bool:
         """Apply OCR results on the GTK main thread."""
+        if generation != self._image_generation:
+            return GLib.SOURCE_REMOVE
+
         self._ocr_thread = None
         self._stop_ocr_animation()
         if not self._disposed and texts is not None:
@@ -360,13 +422,16 @@ class ImageTextOverlay(Gtk.Widget):
             else:
                 button.remove_css_class("selected")
 
-        if self._selected_texts and self._on_texts_selected is not None:
-            self._on_texts_selected(self._selected_texts)
+        if self._selected_texts:
+            self.emit("texts-selected", self._selected_texts)
 
     def do_measure(
         self, orientation: Gtk.Orientation, for_size: int
     ) -> tuple[int, int, int, int]:
         del for_size
+        if self._texture is None:
+            return 0, 0, -1, -1
+
         natural_size = (
             self._image_width
             if orientation == Gtk.Orientation.HORIZONTAL
@@ -376,14 +441,16 @@ class ImageTextOverlay(Gtk.Widget):
 
     def do_size_allocate(self, width: int, height: int, baseline: int) -> None:
         del baseline
-        if width <= 0 or height <= 0:
+        if (
+            width <= 0
+            or height <= 0
+            or self._image_width <= 0
+            or self._image_height <= 0
+        ):
             self._image_rect = Graphene.Rect().init(0, 0, 0, 0)
             return
 
-        scale = (
-            min(width / self._image_width, height / self._image_height)
-            * self._zoom
-        )
+        scale = min(width / self._image_width, height / self._image_height) * self._zoom
         scaled_width = self._image_width * scale
         scaled_height = self._image_height * scale
         centered_x = (width - scaled_width) / 2
@@ -444,7 +511,11 @@ class ImageTextOverlay(Gtk.Widget):
             self._area_selector.size_allocate(selection_allocation, -1)
 
     def do_snapshot(self, snapshot: Gtk.Snapshot) -> None:
-        if self._image_rect.get_width() < 1 or self._image_rect.get_height() < 1:
+        if (
+            self._texture is None
+            or self._image_rect.get_width() < 1
+            or self._image_rect.get_height() < 1
+        ):
             return
 
         snapshot.append_texture(self._texture, self._image_rect)
