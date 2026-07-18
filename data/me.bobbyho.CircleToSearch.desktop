@@ -2,10 +2,10 @@
 Name=Circle to Search
 Comment=Recognize and search text in images
 Exec=circle-to-search %U
-Icon=com.github.circle-to-search
+Icon=me.bobbyho.CircleToSearch
 Terminal=false
 Type=Application
 Categories=Graphics;Scanning;OCR;
 MimeType=image/png;image/jpeg;image/webp;image/bmp;image/tiff;
 StartupNotify=true
-StartupWMClass=com.github.circle-to-search
+StartupWMClass=me.bobbyho.CircleToSearch

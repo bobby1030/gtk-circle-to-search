@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 @Gtk.Template(
-    resource_path="/com/github/circle_to_search/ui/translator-pane.ui"
+    resource_path="/me/bobbyho/CircleToSearch/ui/translator-pane.ui"
 )
 class TranslatorPane(Adw.PreferencesGroup):
     """Translate text into a selected target language."""

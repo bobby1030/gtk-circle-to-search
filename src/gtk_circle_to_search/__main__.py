@@ -11,6 +11,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     from .application import App
 
     application_argv = sys.argv if argv is None else [sys.argv[0], *argv]
-    app = App(application_id="com.github.circle-to-search")
+    app = App(application_id="me.bobbyho.CircleToSearch")
 
     return app.run(application_argv)

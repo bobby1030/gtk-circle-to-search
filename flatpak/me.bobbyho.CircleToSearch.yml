@@ -1,4 +1,4 @@
-id: com.github.circle-to-search
+id: me.bobbyho.CircleToSearch
 runtime: org.gnome.Platform
 runtime-version: "49"
 sdk: org.gnome.Sdk

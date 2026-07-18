@@ -1,23 +1,18 @@
 subdir('ui')
 
 install_data(
-  'com.github.circle-to-search.desktop',
+  'me.bobbyho.CircleToSearch.desktop',
   install_dir: get_option('datadir') / 'applications',
 )
 
 install_data(
-  'icons/hicolor/scalable/apps/com.github.circle-to-search.svg',
+  'icons/hicolor/scalable/apps/me.bobbyho.CircleToSearch.svg',
   install_dir: get_option('datadir') / 'icons/hicolor/scalable/apps',
 )
 
-install_data(
-  'icons/hicolor/512x512/apps/com.github.circle-to-search.svg',
-  install_dir: get_option('datadir') / 'icons/hicolor/512x512/apps',
-)
-
 gnome.compile_resources(
-  'circle-to-search',
-  'com.github.circle_to_search.gresource.xml',
+  'me.bobbyho.CircleToSearch',
+  'me.bobbyho.CircleToSearch.gresource.xml',
   dependencies: compiled_blueprints,
   source_dir: [
     meson.current_build_dir(),

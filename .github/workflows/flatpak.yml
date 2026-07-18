@@ -46,6 +46,6 @@ jobs:
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
           bundle: circle-to-search.flatpak
-          manifest-path: flatpak/com.github.circle-to-search.yml
+          manifest-path: flatpak/me.bobbyho.CircleToSearch.yml
           cache-key: flatpak-builder-${{ github.sha }}
           artifact-name: circle-to-search-${{ github.sha }}.flatpak

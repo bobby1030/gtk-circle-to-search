@@ -10,7 +10,7 @@ https://github.com/user-attachments/assets/b5a53d40-5ccd-4448-9089-5dba91d4de82
 
 Python sources live under `src/`, while authored Blueprint templates live under
 `data/ui/`. Meson compiles the templates, bundles the generated `.ui` files
-into `circle-to-search.gresource`, and installs that bundle with the Python
+into `me.bobbyho.CircleToSearch.gresource`, and installs that bundle with the Python
 package:
 
 ```sh

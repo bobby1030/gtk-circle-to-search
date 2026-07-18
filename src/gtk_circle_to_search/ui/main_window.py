@@ -24,7 +24,7 @@ class SelectedText(GObject.Object):
     score = GObject.Property(type=str, default="0.000")  # Confidence score
 
 
-@Gtk.Template(resource_path="/com/github/circle_to_search/ui/main-window.ui")
+@Gtk.Template(resource_path="/me/bobbyho/CircleToSearch/ui/main-window.ui")
 class MainWindow(Adw.ApplicationWindow):
     """An Adwaita window containing an image and its OCR text overlay."""
 
@@ -55,7 +55,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         style_provider = Gtk.CssProvider()
         style_provider.load_from_resource(
-            "/com/github/circle_to_search/style.css"
+            "/me/bobbyho/CircleToSearch/style.css"
         )
         Gtk.StyleContext.add_provider_for_display(
             self.get_display(),

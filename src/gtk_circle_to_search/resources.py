@@ -15,7 +15,7 @@ def register_resources() -> None:
     if _RESOURCE is not None:
         return
 
-    resource_ref = files(__package__).joinpath("circle-to-search.gresource")
+    resource_ref = files(__package__).joinpath("me.bobbyho.CircleToSearch.gresource")
     with as_file(resource_ref) as resource_path:
         _RESOURCE = Gio.Resource.load(str(resource_path))
 
