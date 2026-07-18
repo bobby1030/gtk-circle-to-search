@@ -28,6 +28,8 @@ class MainWindow(Adw.ApplicationWindow):
 
     __gtype_name__ = "MainWindow"
 
+    _main_stack: Gtk.Stack = Gtk.Template.Child("main-stack")
+    _start_page: Adw.StatusPage = Gtk.Template.Child("start-page")
     _overlay_container: Adw.Bin = Gtk.Template.Child("overlay_container")
     _toast_overlay: Adw.ToastOverlay = Gtk.Template.Child("toast-overlay")
     _selected_text: SelectedText = Gtk.Template.Child("selected_text")
@@ -48,14 +50,20 @@ class MainWindow(Adw.ApplicationWindow):
             "toast-requested",
             self._handle_translator_toast,
         )
+        self.image = image
 
-        # Put the image and its text overlay into the overlay container
+    @Gtk.Template.Callback()
+    def on_open_image_clicked(self, _button: Gtk.Button) -> None:
+        """Handle a click on the open image button."""
         self._overlay_container.set_child(
             ImageTextOverlay(
-                image=image,
+                image=self.image,
                 on_texts_selected=self._handle_texts_selected,
             )
         )
+
+        # Switch view to the overlay container
+        self._main_stack.set_visible_child(self._overlay_container)
 
     def _handle_texts_selected(self, texts: Sequence[Text]) -> None:
         """Update the selected-text model from one or more OCR regions."""
@@ -114,9 +122,7 @@ class MainWindow(Adw.ApplicationWindow):
         """Search for the selected OCR text in the default browser."""
         query = self._selected_text.props.text.strip()
         if not query or query == "NA":
-            self._toast_overlay.add_toast(
-                Adw.Toast.new("Select some text to search")
-            )
+            self._toast_overlay.add_toast(Adw.Toast.new("Select some text to search"))
             return
 
         uri = f"https://www.google.com/search?{urlencode({'q': query})}"

@@ -15,9 +15,47 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
         <child>
           <object class="AdwOverlaySplitView">
             <property name="content">
-              <object class="AdwBin" id="overlay_container">
-                <property name="valign">0</property>
-                <property name="vexpand">true</property>
+              <object class="GtkStack" id="main-stack">
+                <property name="transition-type">1</property>
+                <child>
+                  <object class="AdwStatusPage" id="start-page">
+                    <property name="title" translatable="yes">Recognize texts from an image</property>
+                    <property name="description" translatable="yes">Open or drag an image to get started.</property>
+                    <property name="icon-name">image-x-generic-symbolic</property>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="orientation">1</property>
+                        <property name="spacing">6</property>
+                        <property name="halign">3</property>
+                        <property name="valign">3</property>
+                        <child>
+                          <object class="GtkButton" id="btn-open-image">
+                            <style>
+                              <class name="suggested-action"/>
+                              <class name="pill"/>
+                            </style>
+                            <signal name="clicked" handler="on_open_image_clicked"/>
+                            <property name="label" translatable="yes">Open Image</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="btn-screenshot">
+                            <style>
+                              <class name="pill"/>
+                            </style>
+                            <property name="label" translatable="yes">Take Screenshot</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="AdwBin" id="overlay_container">
+                    <property name="valign">0</property>
+                    <property name="vexpand">true</property>
+                  </object>
+                </child>
               </object>
             </property>
             <property name="sidebar">

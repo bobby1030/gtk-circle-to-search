@@ -9,9 +9,44 @@ template $MainWindow: Adw.ApplicationWindow {
   content: Adw.ToastOverlay toast-overlay {
     Adw.OverlaySplitView {
       // Image display area
-      content: Adw.Bin overlay_container {
-        valign: fill;
-        vexpand: true;
+      content: Stack main-stack {
+        transition-type: crossfade;
+
+        Adw.StatusPage start-page {
+          title: _("Recognize texts from an image");
+          description: _("Open or drag an image to get started.");
+          icon-name: "image-x-generic-symbolic";
+
+          Box {
+            orientation: vertical;
+            spacing: 6;
+            halign: center;
+            valign: center;
+
+            Button btn-open-image {
+              styles [
+                "suggested-action",
+                "pill",
+              ]
+
+              clicked => $on_open_image_clicked();
+              label: _("Open Image");
+            }
+
+            Button btn-screenshot {
+              styles [
+                "pill",
+              ]
+
+              label: _("Take Screenshot");
+            }
+          }
+        }
+
+        Adw.Bin overlay_container {
+          valign: fill;
+          vexpand: true;
+        }
       };
 
       // Sidebar for recognized text
