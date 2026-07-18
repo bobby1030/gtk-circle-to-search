@@ -4,6 +4,10 @@ A GTK 4 and Libadwaita application inspired by the "Circle to Search" feature in
 Android. It allows you to select text from an image and perform actions such as 
 searching or translating the selected text.
 
+## Demo
+
+![GTK Circle to Search demo](placeholder)
+
 ## Build
 
 Python sources live under `src/`, while authored Blueprint templates live under
@@ -66,8 +70,3 @@ The build requires `meson`, `ninja`, `blueprint-compiler`, `libportal`, and
 - [ ] Restore a previous selection from history.
 - [ ] Add an image chooser and drag-and-drop image loading.
 - [ ] Persist sidebar width, language choices, and automatic-translation state.
-
-## Current limitation
-
-Images can be opened from the command line, but the in-app image chooser is
-not implemented yet.
